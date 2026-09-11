@@ -4,7 +4,7 @@ This guide is for contributors to SparkFabrik-maintained Arch Linux packages. Su
 
 ## Choose the change
 
-- **New package:** add a recipe, metadata, and an upstream version source. Start with manual review before enabling automatic merges.
+- **New package:** add a recipe and metadata; add an upstream version source when the package tracks an external release. Start with manual review before enabling automatic merges.
 - **Upstream update:** let the scheduled updater open the PR, or prepare a manual version bump when intervention is needed.
 - **Packaging fix:** keep `pkgver` unchanged and increase `pkgrel`. Explain the resulting installation or runtime change.
 - **Workflow or signing change:** request platform-team review and run the repository checks.
@@ -19,7 +19,7 @@ Do not push directly to `main`. Human-authored changes require one code-owner ap
 
 ## Add or change a recipe
 
-Keep each package in `packages/<pkgname>/`, with its `PKGBUILD`, generated `.SRCINFO`, a `distribution` file, and any auxiliary files. Set `distribution` to `local` for direct vendor downloads on each workstation, or `repository` only after reviewing redistribution rights. Missing or unknown values fail CI. Moving an already published package to local-only requires a repository migration. Use `packages/chatgpt-desktop/` as a reference, adapting dependencies and extraction to the actual upstream artifact.
+Keep each package in `packages/<pkgname>/`, with its `PKGBUILD`, generated `.SRCINFO`, a `distribution` file, and any auxiliary files. Set `distribution` to `local` for paru recipes that download directly from a vendor, or `repository` for our own packages to publish as signed pacman binaries. This is a public repository: do not commit confidential internal files or credentials. Missing or unknown values fail CI. Moving an already published package to local-only requires a repository migration. Use `packages/chatgpt-desktop/` as a reference, adapting dependencies and extraction to the actual upstream artifact.
 
 Review these details before submitting:
 
@@ -74,7 +74,7 @@ CI also installs the artifact from a signed test repository in fresh Arch. For d
 
 ## Configure upstream updates
 
-Add an entry to `nvchecker.toml` whose name matches the package directory. Choose an upstream source that returns exactly one current version. Recipes used by the updater need plain `pkgver=` and `pkgrel=` assignments.
+For externally versioned packages, add an entry to `nvchecker.toml` whose name matches the package directory. Our own packages can instead receive version bumps through normal reviewed PRs. Choose an upstream source that returns exactly one current version. Recipes used by the updater need plain `pkgver=` and `pkgrel=` assignments.
 
 The daily **Check upstream versions** workflow checks every entry. It can also be dispatched manually on `main`. It updates the version and checksums, resets `pkgrel` to `1`, regenerates metadata, and opens a PR through SparkFabrik PR Automation. An existing PR for that version, even a closed one, prevents duplicate PRs.
 
@@ -86,6 +86,6 @@ If an update fails, inspect its build or install logs and fix the cause through 
 
 Describe the package change, upstream source, and validation performed. Include desktop launch results where applicable and call out root scriptlets or system configuration changes. Keep unrelated changes in separate PRs.
 
-After merge, CI rebuilds and tests changed recipes. Local-only binaries remain on the disposable runner and are never uploaded. Only packages classified as `repository` are signed and published to the `repo` Release. Contributors do not need the packaging private key or App private key. Never commit either credential or upload unsigned packages manually. Clients receive published binary updates through `pacman -Syu`. Local-only users update their reviewed checkout and rerun `scripts/install-local.sh`; automatic PR merging does not update installed local applications.
+After merge, CI rebuilds and tests changed recipes. Recipe-only binaries remain on the disposable runner and are never uploaded. PR builds never upload binaries, even when a PR changes a distribution policy. Only packages classified as `repository` are signed and published to the `repo` Release. Contributors do not need the packaging private key or App private key. Never commit either credential or upload unsigned packages manually. Clients receive published binary updates through `pacman -Syu`. Recipe users receive updates with `paru -Syu --mode repo,pkgbuilds`; automatic PR merging makes the version available but does not remotely update workstations.
 
 For interrupted publication and key maintenance, see [Signing and publication](README.md#signing-and-publication). Keep `SigLevel = Required TrustedOnly` in client configuration.

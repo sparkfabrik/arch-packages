@@ -75,7 +75,10 @@ def recipes():
 
 
 def distribution(name):
-    mode = Path(f"packages/{name}/distribution").read_text().strip()
+    try:
+        mode = Path(f"packages/{name}/distribution").read_text().strip()
+    except FileNotFoundError as error:
+        raise ValueError(f"Missing distribution policy: {name}") from error
     if mode not in {"local", "repository"}:
         raise ValueError(f"Invalid distribution policy: {name}")
     return mode

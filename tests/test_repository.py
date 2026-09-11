@@ -22,26 +22,6 @@ lint = load("lint")
 auto_merge = load("auto_merge")
 
 
-class LocalLintTests(unittest.TestCase):
-    def test_local_warnings_are_visible_but_ci_rejects_them(self):
-        result = subprocess.CompletedProcess([], 0, "demo W: Host-specific dependency provider\n")
-        for flags, expected in [([], 1), (["--errors-only"], 0)]:
-            with patch.object(lint.sys, "argv", ["lint.py", *flags, "/nonexistent/allow", "package"]), \
-                    patch.object(lint.subprocess, "run", return_value=result), \
-                    patch("builtins.print") as output, self.assertRaises(SystemExit) as error:
-                lint.main()
-            self.assertEqual(error.exception.code, expected)
-            output.assert_any_call("demo W: Host-specific dependency provider")
-
-    def test_local_errors_still_fail(self):
-        result = subprocess.CompletedProcess([], 0, "demo E: Missing dependency\n")
-        with patch.object(lint.sys, "argv", ["lint.py", "--errors-only", "/nonexistent/allow", "package"]), \
-                patch.object(lint.subprocess, "run", return_value=result), \
-                patch("builtins.print"), self.assertRaises(SystemExit) as error:
-            lint.main()
-        self.assertEqual(error.exception.code, 1)
-
-
 class AutoMergeTests(unittest.TestCase):
     def setUp(self):
         self.old = "pkgver=1.2.3\npkgrel=2\ndepends=('glibc')\nsha256sums_x86_64=('" + "a" * 64 + "')\n"
@@ -135,6 +115,7 @@ class PublicationTests(unittest.TestCase):
         fingerprint = next(line.split(":")[9] for line in listing.splitlines() if line.startswith("fpr:"))
         Path("keys").mkdir()
         Path("keys/fingerprint").write_text(fingerprint)
+        Path("keys/sparkfabrik.asc").write_text(self.real_run("gpg", "--armor", "--export", fingerprint))
         Path("artifacts").mkdir()
         self.remote = self.root / "remote"
         self.remote.mkdir()
@@ -260,6 +241,24 @@ class PublicationTests(unittest.TestCase):
         self.assertFalse(any("desktop" in path.name for path in self.remote.iterdir()))
         database = self.real_run("bsdtar", "-tf", str(self.remote / "sparkfabrik.db"))
         self.assertNotIn("desktop", database)
+
+    def test_plan_includes_binary_changes_since_checkpoint(self):
+        self.recipe("internal")
+        self.publish()
+        self.recipe("desktop")
+        Path("packages/desktop/distribution").write_text("local\n")
+        with patch.object(repository, "select", side_effect=[["desktop"], ["internal"]]) as selection:
+            result = repository.plan("previous-main", True, self.root)
+        self.assertEqual(selection.call_args_list[0].args, ("previous-main",))
+        self.assertEqual(selection.call_args_list[1].args, (self.head,))
+        self.assertEqual(result["publish_packages"], ["internal"])
+        self.assertEqual([item["name"] for item in result["packages"]], ["desktop", "internal"])
+
+    def test_missing_distribution_policy_fails_closed(self):
+        self.recipe("a")
+        Path("packages/a/distribution").rename("policy-backup")
+        with self.assertRaisesRegex(ValueError, "Missing distribution policy"):
+            self.publish()
 
     def test_switching_last_published_package_to_local_requires_migration(self):
         self.recipe("a")

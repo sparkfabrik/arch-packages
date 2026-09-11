@@ -91,7 +91,7 @@ jobs:
             -e PACKAGE "${ARCH_IMAGE}" bash -c \
             'pacman-key --init && bash scripts/test-install.sh "${PACKAGE}"'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: matrix.distribution == 'repository'
+        if: matrix.distribution == 'repository' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           name: package-${{ matrix.name }}
           path: artifacts/*.pkg.tar.zst
