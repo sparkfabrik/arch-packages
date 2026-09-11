@@ -60,6 +60,8 @@ pacman -Qi chatgpt-desktop
 chatgpt
 ```
 
+The launcher is `chatgpt`; its application executable is `/usr/lib/chatgpt/ChatGPT`.
+
 An existing package named `chatgpt` conflicts with this package; review paru's replacement prompt. For manual use, clone this repository, enter `packages/chatgpt-desktop`, and run `makepkg -si`. No custom installer is needed. Paru manages its own build cache; a desktop repack can occupy substantial disk space.
 
 The package preserves OpenAI's launcher, desktop file, and AppArmor profile. It does not execute Debian maintainer scripts or disable Chromium's sandbox. On AppArmor installations that restrict user namespaces, load the bundled profile through your existing AppArmor administration process. No root install scriptlet is included.
@@ -118,7 +120,9 @@ python -m unittest discover -s tests -v
 shellcheck scripts/*.sh
 ```
 
-Publication tests use temporary keys and simulated GitHub storage, with real GPG and `repo-add`. They do not publish remotely. GUI launch and login still need validation in an actual desktop session.
+Publication tests use temporary keys and simulated GitHub storage, with real GPG and `repo-add`. They do not publish remotely.
+
+`chatgpt-desktop` version `26.908.31748-1` was also built as a regular user and installed on an Arch Linux x86_64 workstation on 2026-09-11. The upstream checksum, package executable permissions, and namcap error checks passed. The user confirmed that launching `chatgpt` works. This confirms installation and desktop launch; login and individual application features were not separately recorded.
 
 ## Automated updates
 
