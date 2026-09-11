@@ -1,0 +1,50 @@
+# Maintainer: SparkFabrik platform team
+pkgname=chatgpt-desktop
+pkgver=26.908.31748
+pkgrel=2
+pkgdesc='ChatGPT desktop application repackaged from the official OpenAI binary'
+arch=('x86_64')
+url='https://chatgpt.com/download'
+license=('LicenseRef-custom')
+options=('!strip' '!debug')
+provides=("chatgpt=${pkgver}")
+conflicts=('chatgpt')
+depends=(
+  'alsa-lib' 'at-spi2-core' 'bash' 'cairo' 'dbus' 'expat' 'gdk-pixbuf2'
+  'glib2' 'glibc' 'gtk3' 'libcups' 'libdrm' 'libgcc' 'libglvnd'
+  'libnotify' 'libpulse' 'libstdc++' 'libusb' 'libx11' 'libxcb'
+  'libxcomposite' 'libxdamage' 'libxext' 'libxfixes' 'libxkbcommon'
+  'libxrandr' 'mesa' 'nspr' 'nss' 'pango' 'systemd-libs' 'sh'
+  'vulkan-driver' 'xdg-utils' 'python' 'python-packaging'
+)
+optdepends=(
+  'git: Git repository integration'
+  'gtk4: GTK 4 backend with --gtk-version=4'
+  'org.freedesktop.secrets: store credentials with a Secret Service backend'
+  'pipewire: WebRTC screen sharing under Wayland'
+)
+backup=('etc/apparmor.d/chatgpt')
+source=('chatgpt-launcher')
+sha256sums=('a2374b2b286206fa2852a651f7cbf541406eae3c9d0463d783bc0ef36a89e76b')
+source_x86_64=("https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_${pkgver}_amd64.deb")
+noextract=("chatgpt_${pkgver}_amd64.deb")
+sha256sums_x86_64=('2df54c70c7c86042e1b525fb123188e9fcd1e7993e4a77ed0e93f250b2d80685')
+
+package() {
+  set -o pipefail
+  bsdtar -xOf "${srcdir}/chatgpt_${pkgver}_amd64.deb" data.tar.xz |
+    bsdtar --no-same-owner -xJf - -C "${pkgdir}" \
+      --exclude './usr/share/doc' --exclude './usr/share/lintian' \
+      --exclude '*/prebuilds/darwin-*' --exclude './usr/bin/chatgpt'
+
+  install -Dm755 "${srcdir}/chatgpt-launcher" "${pkgdir}/usr/bin/chatgpt"
+  ln -s chatgpt "${pkgdir}/usr/bin/codex-desktop"
+
+  install -dm755 "${pkgdir}/usr/share/licenses/${pkgname}"
+  bsdtar -xOf "${srcdir}/chatgpt_${pkgver}_amd64.deb" data.tar.xz |
+    bsdtar -xOJf - ./usr/share/doc/chatgpt/copyright > \
+      "${pkgdir}/usr/share/licenses/${pkgname}/copyright"
+  chmod 644 "${pkgdir}/usr/share/licenses/${pkgname}/copyright"
+  ln -s /usr/lib/chatgpt/LICENSES.chromium.html \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
+}

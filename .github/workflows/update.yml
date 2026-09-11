@@ -1,0 +1,95 @@
+name: Check upstream versions
+
+on:
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-versions
+  cancel-in-progress: false
+
+jobs:
+  discover:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    outputs:
+      packages: ${{ steps.list.outputs.packages }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - id: list
+        run: echo "packages=$(python scripts/update.py --list)" >> "${GITHUB_OUTPUT}"
+
+  update:
+    needs: discover
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment: updates
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.discover.outputs.packages) }}
+    env:
+      PACKAGE: ${{ matrix.package }}
+    container:
+      image: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+    steps:
+      - name: Install update tools
+        run: |
+          pacman-key --init
+          pacman -Syu --noconfirm --needed git github-cli nvchecker pacman-contrib python
+          useradd --create-home builder
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Prepare version bump
+        id: update
+        run: python scripts/update.py "${PACKAGE}"
+      - name: Create scoped automation token
+        if: steps.update.outputs.version != ''
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.SF_PR_AUTOMATION_CLIENT_ID }}
+          private-key: ${{ secrets.SF_PR_AUTOMATION_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: write
+          permission-pull-requests: write
+      - name: Open version pull request
+        if: steps.update.outputs.version != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ steps.update.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="chore/update-${PACKAGE}-${VERSION}"
+          existing=$(gh pr list --head "${branch}" --state all --json number --jq length)
+          if [[ "${existing}" != 0 ]]; then
+            echo "A pull request already exists for ${VERSION}."
+            exit 0
+          fi
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          gh auth setup-git
+          if [[ -n "$(git ls-remote --heads origin "refs/heads/${branch}")" ]]; then
+            git fetch origin "${branch}"
+            git diff --exit-code FETCH_HEAD -- "packages/${PACKAGE}"
+          else
+            git switch -c "${branch}"
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add "packages/${PACKAGE}/PKGBUILD" "packages/${PACKAGE}/.SRCINFO"
+            git commit -m "chore(${PACKAGE}): update to ${VERSION}"
+            git push origin "HEAD:refs/heads/${branch}"
+          fi
+          printf 'Updates %s to %s.\n\nAllowlisted version-only updates merge automatically after required CI passes. Other changes require platform-team review.\n' "${PACKAGE}" "${VERSION}" > /tmp/bump-body.txt
+          gh pr create --base main --head "${branch}" \
+            --title "chore(${PACKAGE}): update to ${VERSION}" \
+            --body-file /tmp/bump-body.txt

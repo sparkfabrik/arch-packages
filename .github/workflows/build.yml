@@ -1,0 +1,151 @@
+name: Build packages
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packages-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'publish' || github.ref }}
+  cancel-in-progress: false
+
+env:
+  GH_REPO: ${{ github.repository }}
+  ARCH_IMAGE: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+
+jobs:
+  select:
+    runs-on: ubuntu-24.04
+    outputs:
+      packages: ${{ steps.select.outputs.packages }}
+      publish_packages: ${{ steps.select.outputs.publish_packages }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select changed packages
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          GNUPGHOME=$(mktemp -d)
+          export GNUPGHOME
+          flags=()
+          if [[ "${PUBLISH}" == true ]]; then
+            flags+=(--published)
+          fi
+          python scripts/repository.py plan --base "${BASE}" "${flags[@]}" > /tmp/package-plan.json
+          python - <<'PYTHON'
+          import json, os
+          plan = json.load(open('/tmp/package-plan.json'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              for key, value in plan.items():
+                  output.write(f'{key}={json.dumps(value)}\n')
+          PYTHON
+
+  checks:
+    runs-on: ubuntu-24.04
+    container:
+      image: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+    steps:
+      - name: Install test tools
+        run: |
+          pacman-key --init
+          pacman -Syu --noconfirm --needed git python shellcheck actionlint
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: python -m unittest discover -s tests -v
+      - run: shellcheck scripts/*.sh packages/chatgpt-desktop/chatgpt-launcher
+      - run: actionlint
+
+  build:
+    needs: select
+    if: needs.select.outputs.packages != '[]'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.select.outputs.packages) }}
+    env:
+      PACKAGE: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build and lint in disposable Arch
+        run: |
+          docker run --rm --platform linux/amd64 -v "${GITHUB_WORKSPACE}:/work" -w /work \
+            -e PACKAGE "${ARCH_IMAGE}" bash -c \
+            'pacman-key --init && pacman -Syu --noconfirm --needed git namcap python && bash scripts/build.sh "${PACKAGE}"'
+      - name: Verify installation in fresh Arch
+        run: |
+          docker run --rm --platform linux/amd64 -v "${GITHUB_WORKSPACE}:/work" -w /work \
+            -e PACKAGE "${ARCH_IMAGE}" bash -c \
+            'pacman-key --init && bash scripts/test-install.sh "${PACKAGE}"'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: matrix.distribution == 'repository' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: package-${{ matrix.name }}
+          path: artifacts/*.pkg.tar.zst
+          if-no-files-found: error
+          retention-days: 7
+
+  required:
+    name: Package checks
+    if: always()
+    needs: [select, checks, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require successful selection, tests, and builds
+        env:
+          SELECT: ${{ needs.select.result }}
+          CHECKS: ${{ needs.checks.result }}
+          BUILD: ${{ needs.build.result }}
+          PACKAGES: ${{ needs.select.outputs.packages }}
+        run: |
+          [[ "${SELECT}" == success && "${CHECKS}" == success ]]
+          [[ "${BUILD}" == success || ( "${BUILD}" == skipped && "${PACKAGES}" == '[]' ) ]]
+
+  publish:
+    needs: [select, required]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.select.outputs.publish_packages != '[]'
+    runs-on: ubuntu-24.04
+    environment: repository
+    permissions:
+      contents: write
+    container:
+      image: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+    steps:
+      - name: Install publication tools
+        run: |
+          pacman-key --init
+          pacman -Syu --noconfirm --needed git python github-cli
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: artifacts
+      - name: Sign and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGING_KEY: ${{ secrets.PACKAGING_KEY }}
+        run: |
+          GNUPGHOME=$(mktemp -d)
+          export GNUPGHOME
+          trap 'gpgconf --kill gpg-agent' EXIT
+          printf '%s' "${PACKAGING_KEY}" | gpg --batch --import
+          unset PACKAGING_KEY
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          python scripts/repository.py publish
