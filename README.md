@@ -70,7 +70,7 @@ In [archlinux-ansible-provisioner](https://github.com/sparkfabrik/archlinux-ansi
 sparkfabrik_arch_repo: true
 ```
 
-The default is `false`. Enabling it imports the fingerprint-checked key and configures the repository before package tasks, including tagged package runs. It does not install ChatGPT. Debian is unchanged; enabled ARM hosts fail with an unsupported-architecture message.
+The default is `false`. Enabling it imports the fingerprint-checked key and configures the repository before package tasks, including tagged package runs. It does not install ChatGPT. Debian is unchanged; enabled ARM hosts fail with an unsupported-architecture message. If you previously added the repository manually, remove that stanza before enabling provisioning; an unmanaged entry causes a clear failure before configuration changes.
 
 Setting the option back to `false` skips management; it does not remove previously installed configuration or trust. To unsubscribe, remove the marked repository stanza explicitly.
 
@@ -109,11 +109,11 @@ To add another package, add a single-package x86_64 PKGBUILD and `.SRCINFO`, the
 
 ## Signing and publication
 
-PRs and branch pushes build without signing credentials. Successful pushes to `main` publish through a separate job and the main-only `repository` environment. GitHub Actions are pinned to commits; the Arch image is pinned to a digest. Review and update these pins with the build workflow, then run the complete checks.
+PR builds run without signing credentials. Pushes to `main` build and publish through a separate publication job and the main-only `repository` environment. GitHub Actions are pinned to commits; the Arch image is pinned to a digest. Review and update these pins with the build workflow, then run the complete checks.
 
 The `repo` Release contains packages, detached signatures, database aliases, files database aliases, and immutable signed snapshots. Existing packages remain available. A signed checkpoint records the last successful source commit; subsequent runs include every pending recipe change.
 
-Packages upload before database aliases. The release checkpoint changes last. An interrupted run can rebuild from its last signed checkpoint and retry. GitHub cannot replace database and signature assets atomically, so a client may need to retry briefly during publication. Never weaken `SigLevel` to work around that.
+Packages upload before database aliases. The release checkpoint changes last. An interrupted run can rebuild from its last signed checkpoint and retry. Retries reuse previously signed packages only when their embedded recipe-tree identity matches the intended recipe; unsigned partial uploads are replaced with the newly checked build. GitHub cannot replace database and signature assets atomically, so a client may need to retry briefly during publication. Never weaken `SigLevel` to work around that.
 
 Changing a published recipe requires a higher `pkgver` or `pkgrel`. Existing package filenames are never overwritten with different bytes. Package removals and epoch changes require a separate repository migration. Old assets are not pruned automatically.
 

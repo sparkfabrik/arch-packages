@@ -122,21 +122,23 @@ class PublicationTests(unittest.TestCase):
         self.head = "1" * 40
         self.trees = {}
         self.fail_alias = False
+        self.fail_signature = False
+        self.fail_checkpoint = False
         self.patch = patch.object(repository, "run", side_effect=self.command)
         self.patch.start()
         self.addCleanup(self.patch.stop)
         self.addCleanup(lambda: subprocess.run(["gpgconf", "--kill", "gpg-agent"], check=False))
 
-    def recipe(self, name, version="1-1"):
+    def recipe(self, name, version="1-1", builddate=1, recipe_tree=None):
         path = Path("packages") / name
         path.mkdir(parents=True, exist_ok=True)
         (path / "PKGBUILD").write_text("# This fixture must never execute\nexit 99\n")
         pkgver, pkgrel = version.rsplit("-", 1)
         (path / ".SRCINFO").write_text(f"pkgname = {name}\narch = x86_64\npkgver = {pkgver}\npkgrel = {pkgrel}\n")
-        self.trees[name] = f"tree-{name}-{version}"
+        self.trees[name] = recipe_tree or f"tree-{name}-{version}"
         payload = self.root / f"payload-{name}-{version}"
-        payload.mkdir()
-        (payload / ".PKGINFO").write_text(f"pkgname = {name}\npkgbase = {name}\npkgver = {version}\npkgdesc = Test\nurl = https://example.com\nbuilddate = 1\npackager = Test\nsize = 5\narch = x86_64\nlicense = MIT\n")
+        payload.mkdir(exist_ok=True)
+        (payload / ".PKGINFO").write_text(f"pkgname = {name}\npkgbase = {name}\npkgver = {version}\npkgdesc = Test\nurl = https://example.com\nbuilddate = {builddate}\npackager = SparkFabrik platform team (recipe {self.trees[name]})\nsize = 5\narch = x86_64\nlicense = MIT\n")
         (payload / "test.txt").write_text("test\n")
         self.real_run("bsdtar", "--zstd", "-cf", str(self.root / "artifacts" / f"{name}-{version}-x86_64.pkg.tar.zst"), "-C", str(payload), ".PKGINFO", "test.txt")
 
@@ -162,11 +164,17 @@ class PublicationTests(unittest.TestCase):
         elif operation == "upload":
             for arg in args[4:args.index("--repo")]:
                 path = Path(arg)
+                if self.fail_signature and path.name.endswith(".pkg.tar.zst.sig"):
+                    self.fail_signature = False
+                    raise RuntimeError("Simulated interrupted signature upload")
                 if self.fail_alias and path.name == "sparkfabrik.db":
                     self.fail_alias = False
                     raise RuntimeError("Simulated interrupted alias upload")
                 shutil.copyfile(path, self.remote / path.name)
         elif operation == "edit":
+            if self.fail_checkpoint:
+                self.fail_checkpoint = False
+                raise RuntimeError("Simulated interrupted checkpoint update")
             self.info = {"body": Path(args[args.index("--notes-file") + 1]).read_text(), "isDraft": False}
         else:
             raise AssertionError(args)
@@ -224,12 +232,93 @@ class PublicationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Bump pkgver"):
             self.publish()
 
+    def test_interrupted_publish_reuses_signed_bytes_after_rebuild(self):
+        self.recipe("a")
+        self.publish()
+        self.recipe("a", "2-1")
+        self.head = "2" * 40
+        self.fail_alias = True
+        with self.assertRaises(RuntimeError):
+            self.publish()
+        uploaded = repository.digest(self.remote / "a-2-1-x86_64.pkg.tar.zst")
+        self.recipe("a", "2-1", builddate=2)
+        self.head = "3" * 40
+        self.assertNotEqual(uploaded, repository.digest(Path("artifacts/a-2-1-x86_64.pkg.tar.zst")))
+        self.publish()
+        self.assertEqual(uploaded, repository.digest(self.remote / "a-2-1-x86_64.pkg.tar.zst"))
+        self.real_run("gpg", "--verify", str(self.remote / "sparkfabrik.db.sig"), str(self.remote / "sparkfabrik.db"))
+
+    def test_unsigned_orphan_is_replaced_with_fresh_checked_build(self):
+        self.recipe("a")
+        self.fail_signature = True
+        with self.assertRaises(RuntimeError):
+            self.publish()
+        package = self.remote / "a-1-1-x86_64.pkg.tar.zst"
+        package.write_bytes(b"Untrusted unsigned upload")
+        self.recipe("a", builddate=2)
+        self.publish()
+        self.assertEqual(repository.digest(package), repository.digest(Path("artifacts") / package.name))
+        self.real_run("gpg", "--verify", str(package) + ".sig", str(package))
+
+    def test_signed_orphan_for_different_recipe_requires_version_bump(self):
+        self.recipe("a")
+        self.fail_alias = True
+        with self.assertRaises(RuntimeError):
+            self.publish()
+        self.recipe("a", recipe_tree="changed-auxiliary-file")
+        with self.assertRaisesRegex(ValueError, "recipe.*bump pkgrel"):
+            self.publish()
+
+    def test_unsigned_package_in_live_database_is_not_replaced(self):
+        self.recipe("a")
+        self.publish()
+        self.recipe("a", "2-1")
+        self.head = "2" * 40
+        self.fail_checkpoint = True
+        with self.assertRaises(RuntimeError):
+            self.publish()
+        package = self.remote / "a-2-1-x86_64.pkg.tar.zst"
+        uploaded = repository.digest(package)
+        Path(str(package) + ".sig").unlink()
+        self.recipe("a", "2-1", builddate=2)
+        with self.assertRaisesRegex(ValueError, "referenced by the live database"):
+            self.publish()
+        self.assertEqual(uploaded, repository.digest(package))
+
+    def test_checkpoint_authenticated_package_can_restore_missing_signature(self):
+        self.recipe("a")
+        self.publish()
+        package = self.remote / "a-1-1-x86_64.pkg.tar.zst"
+        uploaded = repository.digest(package)
+        Path(str(package) + ".sig").unlink()
+        self.publish()
+        self.assertEqual(uploaded, repository.digest(package))
+        self.real_run("gpg", "--verify", str(package) + ".sig", str(package))
+
+    def test_tampered_signed_orphan_is_not_replaced(self):
+        self.recipe("a")
+        self.fail_alias = True
+        with self.assertRaises(RuntimeError):
+            self.publish()
+        (self.remote / "a-1-1-x86_64.pkg.tar.zst").write_bytes(b"Tampered signed upload")
+        self.recipe("a", builddate=2)
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.publish()
+
+    def test_valid_signature_from_wrong_key_is_rejected(self):
+        self.real_run("gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase", "",
+                      "--quick-generate-key", "Wrong signer", "ed25519", "sign", "1d")
+        Path("payload").write_text("signed by another key")
+        self.real_run("gpg", "--batch", "--local-user", "Wrong signer", "--detach-sign", "payload")
+        with self.assertRaisesRegex(ValueError, "pinned packaging key"):
+            repository.verify(Path("payload"))
+
     def test_tampered_package_and_checkpoint_fail(self):
         self.recipe("a")
         self.publish()
         with (self.remote / "a-1-1-x86_64.pkg.tar.zst").open("ab") as stream:
             stream.write(b"tampered")
-        with self.assertRaises(subprocess.CalledProcessError):
+        with self.assertRaisesRegex(ValueError, "checksum mismatch"):
             self.publish()
         state = next(self.remote.glob("state-*.json"))
         state.write_text("{}")

@@ -109,13 +109,22 @@ def sign(path):
         "--detach-sign", "--no-armor", str(path))
 
 
-def upload(path, assets, scratch):
-    if path.name in assets:
+def validate_package(path, name, version, recipe):
+    pkginfo = run("bsdtar", "-xOf", str(path), ".PKGINFO")
+    fields = dict(line.split(" = ", 1) for line in pkginfo.splitlines() if " = " in line)
+    expected = (name, version, "x86_64", f"SparkFabrik platform team (recipe {recipe})")
+    if tuple(fields.get(key) for key in ["pkgname", "pkgver", "arch", "packager"]) != expected:
+        raise ValueError(f"Unexpected package identity or recipe: {path.name}; bump pkgrel for recipe changes")
+
+
+def upload(path, assets, scratch, replace_unsigned=False):
+    if path.name in assets and not replace_unsigned:
         existing = download(path.name, scratch)
         if digest(existing) != digest(path):
             raise ValueError(f"Refusing to replace immutable asset {path.name}; bump pkgrel")
         return
-    run("gh", "release", "upload", "repo", str(path), "--repo", REPO)
+    run("gh", "release", "upload", "repo", str(path), "--repo", REPO,
+        *(["--clobber"] if replace_unsigned else []))
 
 
 def publish(directory):
@@ -130,16 +139,21 @@ def publish(directory):
     assets = {item["name"] for item in info["assets"]} if info else set()
     package_paths = []
     updated = {}
+    unsigned = set()
     for name in names:
         version = metadata(name)
         recipe = run("git", "rev-parse", f"HEAD:packages/{name}")
         previous = state["packages"].get(name)
         if previous and previous["recipe"] == recipe:
             path = download(previous["filename"], directory)
-            download(previous["filename"] + ".sig", directory)
-            verify(path)
             if digest(path) != previous["sha256"]:
                 raise ValueError(f"Published checksum mismatch: {name}")
+            if previous["filename"] + ".sig" in assets:
+                download(previous["filename"] + ".sig", directory)
+                verify(path)
+            else:
+                # The verified checkpoint authenticates these exact bytes.
+                sign(path)
             updated[name] = previous
         else:
             if previous and previous["version"] == version:
@@ -151,19 +165,35 @@ def publish(directory):
             if source.is_symlink() or not source.is_file():
                 raise ValueError(f"Missing regular build artifact: {source}")
             shutil.copyfile(source, path)
-            pkginfo = run("bsdtar", "-xOf", str(path), ".PKGINFO")
-            fields = dict(line.split(" = ", 1) for line in pkginfo.splitlines() if " = " in line)
-            if (fields.get("pkgname"), fields.get("pkgver"), fields.get("arch")) != (name, version, "x86_64"):
-                raise ValueError(f"Unexpected package identity: {path.name}")
-            if path.name in assets:
-                # Retry an interrupted publish using the already uploaded signature.
+            validate_package(path, name, version, recipe)
+            if path.name in assets and path.name + ".sig" in assets:
+                # Rebuilds can differ; reuse only signed bytes for the same recipe.
                 existing = download(path.name, directory / "existing")
-                if digest(existing) != digest(path):
-                    raise ValueError(f"Different bytes already published for {path.name}; bump pkgrel")
-            if path.name + ".sig" in assets:
+                download(path.name + ".sig", directory / "existing")
+                verify(existing)
+                validate_package(existing, name, version, recipe)
+                shutil.copyfile(existing, path)
+                shutil.copyfile(str(existing) + ".sig", str(path) + ".sig")
+            elif path.name + ".sig" in assets:
                 download(path.name + ".sig", directory)
                 verify(path)
             else:
+                # No checkpoint references this version. Replace unsigned orphans
+                # with the checked build, never sign bytes downloaded from GitHub.
+                if path.name in assets:
+                    if "sparkfabrik.db" in assets:
+                        live = directory / "live"
+                        live.mkdir(exist_ok=True)
+                        live_db = live / "sparkfabrik.db"
+                        if not live_db.exists():
+                            download("sparkfabrik.db", live)
+                            download("sparkfabrik.db.sig", live)
+                            verify(live_db)
+                        if f"{name}-{version}/desc" in run("bsdtar", "-tf", str(live_db)).splitlines():
+                            raise ValueError(f"Unsigned package is referenced by the live database: {path.name}")
+                    elif not info["isDraft"]:
+                        raise ValueError("Cannot establish unsigned orphan status without a live database")
+                    unsigned.add(path.name)
                 sign(path)
             updated[name] = {"version": version, "recipe": recipe, "filename": path.name, "sha256": digest(path)}
         package_paths.append(path)
@@ -195,7 +225,7 @@ def publish(directory):
     scratch = directory / "compare"
     scratch.mkdir()
     for path in [*package_paths, snapshot, state_path]:
-        upload(path, assets, scratch)
+        upload(path, assets, scratch, replace_unsigned=path.name in unsigned)
         upload(Path(str(path) + ".sig"), assets, scratch)
     for archive, alias in [(db, "sparkfabrik.db"), (files, "sparkfabrik.files")]:
         # GitHub assets are files, not repository symlinks.
@@ -206,7 +236,7 @@ def publish(directory):
         run("gh", "release", "upload", "repo", str(archive), str(archive) + ".sig",
             str(alias_path), str(alias_path) + ".sig", "--repo", REPO, "--clobber")
     notes = directory / "release-notes.txt"
-    notes.write_text("Signed x86_64 packages for SparkFabrik workstations.\n\n"
+    notes.write_text("SparkFabrik-maintained signed x86_64 packages for Arch Linux.\n\n"
                      f"<!-- published: {state_path.name} -->\n")
     run("gh", "release", "edit", "repo", "--repo", REPO, "--notes-file", str(notes), "--draft=false")
 

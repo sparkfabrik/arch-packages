@@ -20,9 +20,10 @@ if (( ${#dependencies[@]} )); then
 fi
 SOURCE_DATE_EPOCH="$(git -c "safe.directory=${root}" -C "${root}" log -1 --format=%ct)"
 export SOURCE_DATE_EPOCH
-export PACKAGER='SparkFabrik platform team'
+recipe=$(git -c "safe.directory=${root}" -C "${root}" rev-parse "HEAD:packages/${package}")
+export PACKAGER="SparkFabrik platform team (recipe ${recipe})"
 runuser -u builder -- makepkg -sf --noconfirm
-python "${root}/scripts/lint.py" "${root}/packages/${package}/namcap.allow" PKGBUILD ./*.pkg.tar.zst
+runuser -u builder -- python "${root}/scripts/lint.py" "${root}/packages/${package}/namcap.allow" PKGBUILD ./*.pkg.tar.zst
 for artifact in ./*.pkg.tar.zst; do
   [[ -f "${artifact}" && ! -L "${artifact}" ]]
   cp "${artifact}" "${root}/artifacts/"

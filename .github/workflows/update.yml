@@ -92,4 +92,4 @@ jobs:
           printf 'Updates %s to %s.\n\nAllowlisted version-only updates merge automatically after required CI passes. Other changes require platform-team review.\n' "${PACKAGE}" "${VERSION}" > /tmp/bump-body.txt
           gh pr create --base main --head "${branch}" \
             --title "chore(${PACKAGE}): update to ${VERSION}" \
-            --body-file /tmp/bump-body.txt --reviewer "${GITHUB_REPOSITORY_OWNER}/platform-team"
+            --body-file /tmp/bump-body.txt
