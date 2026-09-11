@@ -1,7 +1,5 @@
 # SparkFabrik Arch packages
 
-**Your apps. Your package manager.**
-
 SparkFabrik-maintained packages for Arch Linux. Install prebuilt applications with pacman and keep them updated alongside the rest of your system. Open to anyone running a supported Arch Linux system.
 
 [Get started](#install-on-arch-linux) · [Available packages](#available-packages) · [Contribute](CONTRIBUTING.md) · [License](#license)
