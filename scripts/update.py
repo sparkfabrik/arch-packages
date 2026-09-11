@@ -8,6 +8,31 @@ import shutil
 import subprocess
 import sys
 import tomllib
+import urllib.request
+
+
+def openai_deb_checksum(index, version):
+    checksums = set()
+    for paragraph in re.split(r"\n\s*\n", index.replace("\r\n", "\n").strip()):
+        fields = {}
+        for line in paragraph.splitlines():
+            if line.startswith((" ", "\t")) or ": " not in line:
+                continue
+            key, value = line.split(": ", 1)
+            if key in fields:
+                raise ValueError("Duplicate Debian index field")
+            fields[key] = value
+        if (fields.get("Package"), fields.get("Architecture"), fields.get("Version")) != ("chatgpt", "amd64", version):
+            continue
+        if fields.get("Filename") != f"pool/main/c/chatgpt/chatgpt_{version}_amd64.deb":
+            raise ValueError("Unexpected OpenAI archive path")
+        checksum = fields.get("SHA256", "")
+        if not re.fullmatch(r"[a-f0-9]{64}", checksum):
+            raise ValueError("Invalid OpenAI SHA256 checksum")
+        checksums.add(checksum)
+    if len(checksums) != 1:
+        raise ValueError("Expected one matching OpenAI release checksum")
+    return checksums.pop()
 
 
 def upstream_version(output, package="chatgpt-desktop"):
@@ -44,10 +69,19 @@ def main():
     shutil.copytree(source, destination, dirs_exist_ok=True)
     recipe = re.sub(r"(?m)^pkgver=.+$", f"pkgver={version}", recipe)
     recipe = re.sub(r"(?m)^pkgrel=.+$", "pkgrel=1", recipe)
+    if package == "chatgpt-desktop":
+        request = urllib.request.Request(config[package]["url"], headers={"User-Agent": "sparkfabrik-arch-packages/1.0"})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            checksum = openai_deb_checksum(response.read().decode(), version)
+        recipe, count = re.subn(r"(?m)^sha256sums_x86_64=\('[a-f0-9]{64}'\)$",
+                                f"sha256sums_x86_64=('{checksum}')", recipe)
+        if count != 1:
+            raise ValueError("Expected one pinned OpenAI checksum assignment")
     (destination / "PKGBUILD").write_text(recipe)
     subprocess.run(["id", "builder"], check=True, stdout=subprocess.DEVNULL)
     subprocess.run(["chown", "-R", "builder:builder", str(destination)], check=True)
-    subprocess.run(["runuser", "-u", "builder", "--", "updpkgsums"], cwd=destination, check=True, stdout=sys.stderr)
+    if package != "chatgpt-desktop":
+        subprocess.run(["runuser", "-u", "builder", "--", "updpkgsums"], cwd=destination, check=True, stdout=sys.stderr)
     info = subprocess.check_output(["runuser", "-u", "builder", "--", "makepkg", "--printsrcinfo"], cwd=destination, text=True)
     shutil.copyfile(destination / "PKGBUILD", source / "PKGBUILD")
     (source / ".SRCINFO").write_text(info)

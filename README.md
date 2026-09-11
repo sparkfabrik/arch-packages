@@ -60,11 +60,11 @@ pacman -Qi chatgpt-desktop
 chatgpt
 ```
 
-The launcher is `chatgpt`; its application executable is `/usr/lib/chatgpt/ChatGPT`.
+The launcher is `chatgpt`, with `codex-desktop` as an alias; the application executable is `/usr/lib/chatgpt/ChatGPT`. In Wayland sessions, the launcher requests native Wayland unless you specify an Ozone platform or platform hint. Put additional whitespace-separated flags in `~/.config/codex-flags.conf`, or pass them on the command line. For XWayland, use `chatgpt --ozone-platform=x11`. Native Wayland remains experimental upstream.
 
 An existing package named `chatgpt` conflicts with this package; review paru's replacement prompt. For manual use, clone this repository, enter `packages/chatgpt-desktop`, and run `makepkg -si`. No custom installer is needed. Paru manages its own build cache; a desktop repack can occupy substantial disk space.
 
-The package preserves OpenAI's launcher, desktop file, and AppArmor profile. It does not execute Debian maintainer scripts or disable Chromium's sandbox. On AppArmor installations that restrict user namespaces, load the bundled profile through your existing AppArmor administration process. No root install scriptlet is included.
+The package uses a small Wayland-aware launcher and preserves OpenAI's desktop file and AppArmor profile. It does not execute Debian maintainer scripts or disable Chromium's sandbox. On AppArmor installations that restrict user namespaces, load the bundled profile through your existing AppArmor administration process. No root install scriptlet is included.
 
 ## Optional binary repository
 
@@ -126,7 +126,7 @@ Publication tests use temporary keys and simulated GitHub storage, with real GPG
 
 ## Automated updates
 
-The daily workflow checks each package named in `nvchecker.toml`. A newer release updates `pkgver`, resets `pkgrel` to `1`, runs `updpkgsums`, regenerates `.SRCINFO`, and opens one PR per version. Existing PRs, including rejected versions, are not duplicated.
+The daily workflow checks each package named in `nvchecker.toml`. A newer release updates `pkgver`, resets `pkgrel` to `1`, takes the desktop checksum from the matching OpenAI package-index record, regenerates `.SRCINFO`, and opens one PR per version. Other external packages use `updpkgsums` unless they have an index-based update path. The desktop updater checks package name, architecture, version, archive path, and SHA256 without downloading the full `.deb`; CI still downloads and verifies it before building. Existing PRs, including rejected versions, are not duplicated.
 
 SparkFabrik PR Automation opens the PR, so CI starts without manual approval. Packages listed in `.github/auto-merge-packages` merge automatically after required CI passes. `chatgpt-desktop` is enabled initially. For local-only packages, merging updates the reviewed recipe; paru discovers the new version when users refresh and upgrade. It does not publish or remotely install the application.
 

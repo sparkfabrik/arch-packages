@@ -24,7 +24,7 @@ Keep each package in `packages/<pkgname>/`, with its `PKGBUILD`, generated `.SRC
 Review these details before submitting:
 
 - Download from the official upstream source over HTTPS. Pin SHA256 checksums with `updpkgsums`; do not use `SKIP` for downloaded binaries.
-- Install the upstream license and declare runtime dependencies. Preserve launcher behavior and desktop integration.
+- Install the upstream license and declare runtime dependencies. Document launcher changes and preserve desktop integration. The desktop wrapper selects native Wayland unless explicitly overridden; it never disables the sandbox.
 - Review archive contents, executable permissions, system configuration, and any bundled services. Do not execute foreign-package maintainer scripts as part of repackaging.
 - Treat `.install` scriptlets as root code: justify each operation and review upgrades and removal as well as first installation.
 - Increase `pkgver` or `pkgrel` whenever a published recipe changes. Published package filenames cannot be replaced with different bytes.
@@ -76,7 +76,7 @@ CI also installs the artifact from a signed test repository in fresh Arch. For d
 
 For externally versioned packages, add an entry to `nvchecker.toml` whose name matches the package directory. Our own packages can instead receive version bumps through normal reviewed PRs. Choose an upstream source that returns exactly one current version. Recipes used by the updater need plain `pkgver=` and `pkgrel=` assignments.
 
-The daily **Check upstream versions** workflow checks every entry. It can also be dispatched manually on `main`. It updates the version and checksums, resets `pkgrel` to `1`, regenerates metadata, and opens a PR through SparkFabrik PR Automation. An existing PR for that version, even a closed one, prevents duplicate PRs.
+The daily **Check upstream versions** workflow checks every entry. It can also be dispatched manually on `main`. For `chatgpt-desktop`, it reads the checksum from OpenAI's package index; CI verifies the downloaded archive. Other packages use `updpkgsums`. It updates the version and checksums, resets `pkgrel` to `1`, regenerates metadata, and opens a PR through SparkFabrik PR Automation. An existing PR for that version, even a closed one, prevents duplicate PRs.
 
 Adding a package to `.github/auto-merge-packages` opts it into automatic merging and requires owner review. The current guard accepts only increasing dotted numeric versions and one architecture-specific SHA256 checksum. Only App-authored PRs changing those fields and matching metadata qualify. Source URLs, dependencies, scripts, exceptions, and workflow changes still require review. Required checks must pass on the tested commit; outdated branches are updated and checked again.
 

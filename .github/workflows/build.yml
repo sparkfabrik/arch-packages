@@ -62,7 +62,7 @@ jobs:
         with:
           persist-credentials: false
       - run: python -m unittest discover -s tests -v
-      - run: shellcheck scripts/*.sh
+      - run: shellcheck scripts/*.sh packages/chatgpt-desktop/chatgpt-launcher
       - run: actionlint
 
   build:

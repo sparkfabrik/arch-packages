@@ -1,12 +1,13 @@
 pkgbase = chatgpt-desktop
 	pkgdesc = ChatGPT desktop application repackaged from the official OpenAI binary
 	pkgver = 26.908.31748
-	pkgrel = 1
+	pkgrel = 2
 	url = https://chatgpt.com/download
 	arch = x86_64
 	license = LicenseRef-custom
 	depends = alsa-lib
 	depends = at-spi2-core
+	depends = bash
 	depends = cairo
 	depends = dbus
 	depends = expat
@@ -50,6 +51,8 @@ pkgbase = chatgpt-desktop
 	options = !strip
 	options = !debug
 	backup = etc/apparmor.d/chatgpt
+	source = chatgpt-launcher
+	sha256sums = a2374b2b286206fa2852a651f7cbf541406eae3c9d0463d783bc0ef36a89e76b
 	source_x86_64 = https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.908.31748_amd64.deb
 	sha256sums_x86_64 = 2df54c70c7c86042e1b525fb123188e9fcd1e7993e4a77ed0e93f250b2d80685
 
