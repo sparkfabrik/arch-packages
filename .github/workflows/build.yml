@@ -1,0 +1,166 @@
+name: Build packages
+
+on:
+  pull_request:
+  push:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: packages-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'publish' || github.ref }}
+  cancel-in-progress: false
+
+env:
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  select:
+    runs-on: ubuntu-24.04
+    outputs:
+      packages: ${{ steps.select.outputs.packages }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select changed packages
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          GNUPGHOME=$(mktemp -d)
+          export GNUPGHOME
+          if [[ "${PUBLISH}" == true ]]; then
+            packages=$(python scripts/repository.py select --published)
+          else
+            packages=$(python scripts/repository.py select --base "${BASE}")
+          fi
+          echo "packages=${packages}" >> "${GITHUB_OUTPUT}"
+
+  checks:
+    runs-on: ubuntu-24.04
+    container:
+      image: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+    steps:
+      - name: Install test tools
+        run: |
+          pacman-key --init
+          pacman -Syu --noconfirm --needed git python shellcheck actionlint
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: python -m unittest discover -s tests -v
+      - run: shellcheck scripts/*.sh
+      - run: actionlint
+
+  build:
+    needs: select
+    if: needs.select.outputs.packages != '[]'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.select.outputs.packages) }}
+    container:
+      image: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+    steps:
+      - name: Install build tools
+        run: |
+          pacman-key --init
+          pacman -Syu --noconfirm --needed git namcap python
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Build and lint
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: bash scripts/build.sh "${PACKAGE}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: package-${{ matrix.package }}
+          path: artifacts/*.pkg.tar.zst
+          if-no-files-found: error
+          retention-days: 7
+
+  required:
+    name: Package checks
+    if: always()
+    needs: [select, checks, build, install]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require successful selection, tests, and builds
+        env:
+          SELECT: ${{ needs.select.result }}
+          CHECKS: ${{ needs.checks.result }}
+          BUILD: ${{ needs.build.result }}
+          INSTALL: ${{ needs.install.result }}
+          PACKAGES: ${{ needs.select.outputs.packages }}
+        run: |
+          [[ "${SELECT}" == success && "${CHECKS}" == success ]]
+          [[ "${BUILD}" == success || ( "${BUILD}" == skipped && "${PACKAGES}" == '[]' ) ]]
+          [[ "${INSTALL}" == success || ( "${INSTALL}" == skipped && "${PACKAGES}" == '[]' ) ]]
+
+  install:
+    needs: [select, build]
+    if: needs.select.outputs.packages != '[]'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.select.outputs.packages) }}
+    container:
+      image: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+    steps:
+      - name: Initialize test keyring
+        run: pacman-key --init
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: package-${{ matrix.package }}
+          path: artifacts
+      - name: Install from a signed test repository
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: bash scripts/test-install.sh "${PACKAGE}"
+
+  publish:
+    needs: [select, required]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.select.outputs.packages != '[]'
+    runs-on: ubuntu-24.04
+    environment: repository
+    permissions:
+      contents: write
+    container:
+      image: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+    steps:
+      - name: Install publication tools
+        run: |
+          pacman-key --init
+          pacman -Syu --noconfirm --needed git python github-cli
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: package-*
+          merge-multiple: true
+          path: artifacts
+      - name: Sign and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGING_KEY: ${{ secrets.PACKAGING_KEY }}
+        run: |
+          GNUPGHOME=$(mktemp -d)
+          export GNUPGHOME
+          trap 'gpgconf --kill gpg-agent' EXIT
+          printf '%s' "${PACKAGING_KEY}" | gpg --batch --import
+          unset PACKAGING_KEY
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          python scripts/repository.py publish
