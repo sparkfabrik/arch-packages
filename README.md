@@ -4,6 +4,8 @@ Signed, prebuilt packages for SparkFabrik Arch Linux workstations. PKGBUILDs liv
 
 Currently supported: **x86_64**, starting with `chatgpt-desktop` from OpenAI's official `.deb`. ARM and AUR publication are outside the current scope.
 
+For package changes and internal review, read [Contributing](CONTRIBUTING.md).
+
 ## Install on Arch Linux
 
 Download the public key and verify its primary fingerprint before trusting it:
