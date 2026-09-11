@@ -1,10 +1,29 @@
 # SparkFabrik Arch packages
 
-Signed, prebuilt packages for SparkFabrik Arch Linux workstations. PKGBUILDs live here; GitHub Releases serves the pacman repository. Clients do not build AUR recipes.
+**Your apps. Your package manager.**
 
-Currently supported: **x86_64**, starting with `chatgpt-desktop` from OpenAI's official `.deb`. ARM and AUR publication are outside the current scope.
+SparkFabrik-maintained packages for Arch Linux. Install prebuilt applications with pacman and keep them updated alongside the rest of your system. Open to anyone running a supported Arch Linux system.
 
-For package changes and internal review, read [Contributing](CONTRIBUTING.md).
+[Get started](#install-on-arch-linux) · [Available packages](#available-packages) · [Contribute](CONTRIBUTING.md) · [License](#license)
+
+## Why use this repository?
+
+- **Native package management.** Install, upgrade, and remove applications with the pacman commands you already use.
+- **Ready-to-install binaries.** Builds happen in CI, so your workstation does not need to run AUR recipes.
+- **Signed releases.** Pacman verifies packages and repository databases against the trusted packaging key.
+- **Visible maintenance.** Recipes and workflows live in Git. Packaging changes receive owner review; eligible version updates merge after automated checks pass.
+
+Maintained by SparkFabrik. This is an independent repository, not an official Arch Linux or upstream vendor repository.
+
+## Available packages
+
+| Package           | Application     | Source                   | Architecture |
+| ----------------- | --------------- | ------------------------ | ------------ |
+| `chatgpt-desktop` | ChatGPT desktop | OpenAI's official `.deb` | `x86_64`     |
+
+ARM builds and publication to the AUR are outside the current scope. See [Contributing](CONTRIBUTING.md) to propose another package.
+
+> **NO WARRANTY OF ANY KIND. USE AT YOUR OWN RISK.** SparkFabrik and the contributors provide this repository, its packaging, and distributed artifacts **“AS IS” and “AS AVAILABLE,” without any express or implied warranty**, including merchantability, fitness for a particular purpose, or noninfringement. We do not guarantee security, compatibility, availability, continued maintenance, or suitability for production. To the extent permitted by applicable law, SparkFabrik and the contributors accept no liability for claims, damages, data loss, or other consequences arising from use. Third-party software remains subject to its own license terms.
 
 ## Install on Arch Linux
 
@@ -62,7 +81,7 @@ Setting the option back to `false` skips management; it does not remove previous
 Run this from a checkout on Linux or macOS with Docker:
 
 ```bash
-docker run --rm -v "${PWD}:/work" -w /work \
+docker run --rm --platform linux/amd64 -v "${PWD}:/work" -w /work \
   archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5 \
   bash -c 'pacman-key --init && pacman -Syu --noconfirm --needed git namcap python && bash scripts/build.sh chatgpt-desktop'
 ```
@@ -110,3 +129,9 @@ Required GitHub configuration:
 - Main protection: `Package checks` from GitHub Actions, up-to-date branches, one code-owner review, stale-review dismissal, and no force pushes or deletion. Only the automation App bypasses the review requirement; status checks still apply.
 
 Write access and signing credentials can affect root-level package installation on subscribed machines. Review PKGBUILDs and workflow changes accordingly. Vendor binaries retain their own licensing terms; recipe ownership does not grant rights to the bundled software.
+
+## License
+
+SparkFabrik-authored packaging recipes, automation, and documentation are licensed under the [MIT License](LICENSE). You may use, modify, and share them under its terms, including its warranty and liability disclaimer.
+
+**The MIT license does not relicense packaged applications or other third-party material.** Those retain their upstream licenses, copyright notices, trademarks, and terms of use. Installing a package does not grant rights beyond those terms.

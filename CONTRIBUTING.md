@@ -1,6 +1,6 @@
 # Contributing to SparkFabrik Arch packages
 
-This guide is for SparkFabrik contributors maintaining packages for company workstations. Submit changes through pull requests; `@sparkfabrik/platform-team` owns review.
+This guide is for contributors to SparkFabrik-maintained Arch Linux packages. Submit changes through pull requests; `@sparkfabrik/platform-team` owns review.
 
 ## Choose the change
 
