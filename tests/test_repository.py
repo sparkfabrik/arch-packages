@@ -58,6 +58,47 @@ class AutoMergeTests(unittest.TestCase):
                     auto_merge.main()
                     self.assertEqual(command.call_count, 1)
 
+    def test_review_bypass_requires_successful_checks_on_the_validated_head(self):
+        head = "1" * 40
+        pr = {"number": 2, "headRefOid": head, "baseRefName": "main", "isDraft": False,
+              "isCrossRepository": False, "mergeStateStatus": "BLOCKED",
+              "author": {"is_bot": True, "login": "app/sparkfabrik-pr-automation"}}
+
+        def command(*args):
+            if args[:3] == ("gh", "pr", "list"):
+                return json.dumps([pr])
+            if args[:2] == ("git", "fetch"):
+                return ""
+            if args[:2] == ("git", "merge-base"):
+                return "base"
+            if args[:2] == ("git", "diff"):
+                return "packages/demo/PKGBUILD\npackages/demo/.SRCINFO"
+            if args[:2] == ("git", "ls-tree"):
+                return "100644 blob object"
+            if args[:2] == ("git", "show"):
+                return {"base:packages/demo/PKGBUILD": self.old,
+                        f"{head}:packages/demo/PKGBUILD": self.new,
+                        "base:packages/demo/.SRCINFO": self.old_info,
+                        f"{head}:packages/demo/.SRCINFO": self.new_info}[args[2]]
+            raise AssertionError(args)
+
+        for state in [None, "PENDING", "FAILURE", "SUCCESS"]:
+            checks = [] if state is None else [{"name": "Package checks", "state": state}]
+            with self.subTest(state=state), patch.dict(os.environ, {
+                "HEAD_SHA": head, "HEAD_BRANCH": "chore/update-demo-1.2.4",
+                "CHECKS_TOKEN": "checks-token",
+            }), patch.object(auto_merge, "run", side_effect=command), \
+                    patch.object(auto_merge.Path, "read_text", return_value="demo\n"), \
+                    patch.object(auto_merge.subprocess, "check_output", return_value=json.dumps(checks)), \
+                    patch.object(auto_merge.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as merge:
+                auto_merge.main()
+                if state == "SUCCESS":
+                    merge.assert_called_once_with(
+                        ["gh", "pr", "merge", "2", "--squash", "--admin", "--match-head-commit", head],
+                        text=True, capture_output=True)
+                else:
+                    merge.assert_not_called()
+
 
 class SelectionTests(unittest.TestCase):
     def test_package_changes_select_only_changed_recipe(self):
