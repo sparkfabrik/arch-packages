@@ -15,24 +15,31 @@ def normalize(line):
 
 
 def main():
-    allow_file = pathlib.Path(sys.argv[1])
+    args = sys.argv[1:]
+    errors_only = args[0] == "--errors-only"
+    if errors_only:
+        args = args[1:]
+    allow_file = pathlib.Path(args[0])
     allowed = set()
     if allow_file.exists():
         allowed = {line for line in allow_file.read_text().splitlines() if line and not line.startswith("#")}
     failed = False
     accepted = 0
-    for target in sys.argv[2:]:
+    for target in args[1:]:
         result = subprocess.run(["namcap", target], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         failed |= result.returncode != 0
         for line in result.stdout.splitlines():
-            if " E: " in line or (" W: " in line and normalize(line) not in allowed):
+            if " E: " in line or (" W: " in line and not errors_only and normalize(line) not in allowed):
                 failed = True
                 print(line)
             elif " W: " in line:
                 accepted += 1
+                if errors_only:
+                    print(line)
             else:
                 print(line)
-    print(f"Namcap: {accepted} documented upstream warnings; {'FAILED' if failed else 'passed'}")
+    policy = "local warnings" if errors_only else "documented upstream warnings"
+    print(f"Namcap: {accepted} {policy}; {'FAILED' if failed else 'passed'}")
     sys.exit(int(failed))
 
 

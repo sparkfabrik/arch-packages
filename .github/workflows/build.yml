@@ -14,12 +14,14 @@ concurrency:
 
 env:
   GH_REPO: ${{ github.repository }}
+  ARCH_IMAGE: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
 
 jobs:
   select:
     runs-on: ubuntu-24.04
     outputs:
       packages: ${{ steps.select.outputs.packages }}
+      publish_packages: ${{ steps.select.outputs.publish_packages }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -34,12 +36,18 @@ jobs:
         run: |
           GNUPGHOME=$(mktemp -d)
           export GNUPGHOME
+          flags=()
           if [[ "${PUBLISH}" == true ]]; then
-            packages=$(python scripts/repository.py select --published)
-          else
-            packages=$(python scripts/repository.py select --base "${BASE}")
+            flags+=(--published)
           fi
-          echo "packages=${packages}" >> "${GITHUB_OUTPUT}"
+          python scripts/repository.py plan --base "${BASE}" "${flags[@]}" > /tmp/package-plan.json
+          python - <<'PYTHON'
+          import json, os
+          plan = json.load(open('/tmp/package-plan.json'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              for key, value in plan.items():
+                  output.write(f'{key}={json.dumps(value)}\n')
+          PYTHON
 
   checks:
     runs-on: ubuntu-24.04
@@ -64,24 +72,28 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJSON(needs.select.outputs.packages) }}
-    container:
-      image: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
+        include: ${{ fromJSON(needs.select.outputs.packages) }}
+    env:
+      PACKAGE: ${{ matrix.name }}
     steps:
-      - name: Install build tools
-        run: |
-          pacman-key --init
-          pacman -Syu --noconfirm --needed git namcap python
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          fetch-depth: 0
           persist-credentials: false
-      - name: Build and lint
-        env:
-          PACKAGE: ${{ matrix.package }}
-        run: bash scripts/build.sh "${PACKAGE}"
+      - name: Build and lint in disposable Arch
+        run: |
+          docker run --rm --platform linux/amd64 -v "${GITHUB_WORKSPACE}:/work" -w /work \
+            -e PACKAGE "${ARCH_IMAGE}" bash -c \
+            'pacman-key --init && pacman -Syu --noconfirm --needed git namcap python && bash scripts/build.sh "${PACKAGE}"'
+      - name: Verify installation in fresh Arch
+        run: |
+          docker run --rm --platform linux/amd64 -v "${GITHUB_WORKSPACE}:/work" -w /work \
+            -e PACKAGE "${ARCH_IMAGE}" bash -c \
+            'pacman-key --init && bash scripts/test-install.sh "${PACKAGE}"'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: matrix.distribution == 'repository'
         with:
-          name: package-${{ matrix.package }}
+          name: package-${{ matrix.name }}
           path: artifacts/*.pkg.tar.zst
           if-no-files-found: error
           retention-days: 7
@@ -89,7 +101,7 @@ jobs:
   required:
     name: Package checks
     if: always()
-    needs: [select, checks, build, install]
+    needs: [select, checks, build]
     runs-on: ubuntu-24.04
     steps:
       - name: Require successful selection, tests, and builds
@@ -97,41 +109,14 @@ jobs:
           SELECT: ${{ needs.select.result }}
           CHECKS: ${{ needs.checks.result }}
           BUILD: ${{ needs.build.result }}
-          INSTALL: ${{ needs.install.result }}
           PACKAGES: ${{ needs.select.outputs.packages }}
         run: |
           [[ "${SELECT}" == success && "${CHECKS}" == success ]]
           [[ "${BUILD}" == success || ( "${BUILD}" == skipped && "${PACKAGES}" == '[]' ) ]]
-          [[ "${INSTALL}" == success || ( "${INSTALL}" == skipped && "${PACKAGES}" == '[]' ) ]]
-
-  install:
-    needs: [select, build]
-    if: needs.select.outputs.packages != '[]'
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJSON(needs.select.outputs.packages) }}
-    container:
-      image: archlinux:base-devel@sha256:61f7de2dd88cc4ba1fe36c24cfe1a503c3936984492d6405eeab013ce6ac68c5
-    steps:
-      - name: Initialize test keyring
-        run: pacman-key --init
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        with:
-          name: package-${{ matrix.package }}
-          path: artifacts
-      - name: Install from a signed test repository
-        env:
-          PACKAGE: ${{ matrix.package }}
-        run: bash scripts/test-install.sh "${PACKAGE}"
 
   publish:
     needs: [select, required]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.select.outputs.packages != '[]'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.select.outputs.publish_packages != '[]'
     runs-on: ubuntu-24.04
     environment: repository
     permissions:

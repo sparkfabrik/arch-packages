@@ -74,6 +74,31 @@ def recipes():
     return names
 
 
+def distribution(name):
+    mode = Path(f"packages/{name}/distribution").read_text().strip()
+    if mode not in {"local", "repository"}:
+        raise ValueError(f"Invalid distribution policy: {name}")
+    return mode
+
+
+def plan(base, published, directory):
+    modes = {name: distribution(name) for name in recipes()}
+    selected = set(select(base))
+    if published:
+        info = release()
+        if info:
+            run("gpg", "--batch", "--import", "keys/sparkfabrik.asc")
+        state = checkpoint(info, directory)
+        if set(state["packages"]) - {name for name in modes if modes[name] == "repository"}:
+            raise ValueError("Moving published packages to local-only requires a repository migration")
+        pending = select(state["commit"]) if "repository" in modes.values() else []
+        selected.update(name for name in pending if modes[name] == "repository")
+    return {
+        "packages": [{"name": name, "distribution": modes[name]} for name in sorted(selected)],
+        "publish_packages": [name for name in sorted(selected) if modes[name] == "repository"],
+    }
+
+
 def select(base):
     names = recipes()
     if not base or set(base) == {"0"}:
@@ -128,14 +153,17 @@ def upload(path, assets, scratch, replace_unsigned=False):
 
 
 def publish(directory):
+    names = [name for name in recipes() if distribution(name) == "repository"]
     info = release()
     state = checkpoint(info, directory)
+    if set(state["packages"]) - set(names):
+        raise ValueError("Removing published packages requires a separate migration")
+    if not names:
+        print("No packages approved for binary publication")
+        return
     head = run("git", "rev-parse", "HEAD")
     if state["commit"]:
         run("git", "merge-base", "--is-ancestor", state["commit"], head)
-    names = recipes()
-    if set(state["packages"]) - set(names):
-        raise ValueError("Removing published packages requires a separate migration")
     assets = {item["name"] for item in info["assets"]} if info else set()
     package_paths = []
     updated = {}
@@ -243,19 +271,21 @@ def publish(directory):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["select", "publish"])
+    parser.add_argument("command", choices=["select", "plan", "publish"])
     parser.add_argument("--base")
     parser.add_argument("--published", action="store_true")
     args = parser.parse_args()
     with tempfile.TemporaryDirectory() as temporary:
         directory = Path(temporary)
         (directory / "existing").mkdir()
-        if args.command == "publish" or args.published:
+        if args.command == "publish" or (args.published and args.command != "plan"):
             run("gpg", "--batch", "--import", "keys/sparkfabrik.asc")
             expected = Path("keys/fingerprint").read_text().strip()
             if not re.fullmatch(r"[A-F0-9]{40}", expected):
                 raise ValueError("Invalid pinned signing fingerprint")
-        if args.command == "publish":
+        if args.command == "plan":
+            print(json.dumps(plan(args.base, args.published, directory)))
+        elif args.command == "publish":
             publish(directory)
         else:
             base = checkpoint(release(), directory)["commit"] if args.published else args.base

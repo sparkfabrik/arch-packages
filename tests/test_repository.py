@@ -22,6 +22,26 @@ lint = load("lint")
 auto_merge = load("auto_merge")
 
 
+class LocalLintTests(unittest.TestCase):
+    def test_local_warnings_are_visible_but_ci_rejects_them(self):
+        result = subprocess.CompletedProcess([], 0, "demo W: Host-specific dependency provider\n")
+        for flags, expected in [([], 1), (["--errors-only"], 0)]:
+            with patch.object(lint.sys, "argv", ["lint.py", *flags, "/nonexistent/allow", "package"]), \
+                    patch.object(lint.subprocess, "run", return_value=result), \
+                    patch("builtins.print") as output, self.assertRaises(SystemExit) as error:
+                lint.main()
+            self.assertEqual(error.exception.code, expected)
+            output.assert_any_call("demo W: Host-specific dependency provider")
+
+    def test_local_errors_still_fail(self):
+        result = subprocess.CompletedProcess([], 0, "demo E: Missing dependency\n")
+        with patch.object(lint.sys, "argv", ["lint.py", "--errors-only", "/nonexistent/allow", "package"]), \
+                patch.object(lint.subprocess, "run", return_value=result), \
+                patch("builtins.print"), self.assertRaises(SystemExit) as error:
+            lint.main()
+        self.assertEqual(error.exception.code, 1)
+
+
 class AutoMergeTests(unittest.TestCase):
     def setUp(self):
         self.old = "pkgver=1.2.3\npkgrel=2\ndepends=('glibc')\nsha256sums_x86_64=('" + "a" * 64 + "')\n"
@@ -133,6 +153,7 @@ class PublicationTests(unittest.TestCase):
         path = Path("packages") / name
         path.mkdir(parents=True, exist_ok=True)
         (path / "PKGBUILD").write_text("# This fixture must never execute\nexit 99\n")
+        (path / "distribution").write_text("repository\n")
         pkgver, pkgrel = version.rsplit("-", 1)
         (path / ".SRCINFO").write_text(f"pkgname = {name}\narch = x86_64\npkgver = {pkgver}\npkgrel = {pkgrel}\n")
         self.trees[name] = recipe_tree or f"tree-{name}-{version}"
@@ -202,6 +223,56 @@ class PublicationTests(unittest.TestCase):
         self.assertNotIn("a-1-1/desc", database)
         self.assertEqual(old_b, repository.digest(self.remote / "b-1-1-x86_64.pkg.tar.zst"))
         self.assertTrue((self.remote / "a-1-1-x86_64.pkg.tar.zst").exists())
+
+    def test_local_only_package_is_never_published(self):
+        self.recipe("desktop")
+        Path("packages/desktop/distribution").write_text("local\n")
+        self.publish()
+        self.assertIsNone(self.info)
+        self.assertEqual(list(self.remote.iterdir()), [])
+
+    def test_local_only_main_plan_uses_push_base_without_a_release(self):
+        self.recipe("desktop")
+        Path("packages/desktop/distribution").write_text("local\n")
+        with patch.object(repository, "select", return_value=[]) as selection:
+            result = repository.plan("previous-main", True, self.root)
+        selection.assert_called_once_with("previous-main")
+        self.assertEqual(result, {"packages": [], "publish_packages": []})
+
+    def test_plan_builds_local_changes_but_uploads_only_repository_packages(self):
+        self.recipe("desktop")
+        Path("packages/desktop/distribution").write_text("local\n")
+        self.recipe("redistributable")
+        with patch.object(repository, "select", return_value=["desktop", "redistributable"]):
+            result = repository.plan("base", False, self.root)
+        self.assertEqual(result["publish_packages"], ["redistributable"])
+        self.assertEqual(result["packages"], [
+            {"name": "desktop", "distribution": "local"},
+            {"name": "redistributable", "distribution": "repository"},
+        ])
+
+    def test_mixed_publication_excludes_local_package(self):
+        self.recipe("desktop")
+        Path("packages/desktop/distribution").write_text("local\n")
+        self.recipe("redistributable")
+        self.publish()
+        self.assertTrue((self.remote / "redistributable-1-1-x86_64.pkg.tar.zst").exists())
+        self.assertFalse(any("desktop" in path.name for path in self.remote.iterdir()))
+        database = self.real_run("bsdtar", "-tf", str(self.remote / "sparkfabrik.db"))
+        self.assertNotIn("desktop", database)
+
+    def test_switching_last_published_package_to_local_requires_migration(self):
+        self.recipe("a")
+        self.publish()
+        Path("packages/a/distribution").write_text("local\n")
+        with self.assertRaisesRegex(ValueError, "migration"):
+            self.publish()
+
+    def test_distribution_policy_is_required_and_closed(self):
+        self.recipe("a")
+        Path("packages/a/distribution").write_text("unknown\n")
+        with self.assertRaisesRegex(ValueError, "distribution policy"):
+            self.publish()
 
     def test_interrupted_first_publish_can_retry(self):
         self.recipe("a")

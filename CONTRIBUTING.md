@@ -19,7 +19,7 @@ Do not push directly to `main`. Human-authored changes require one code-owner ap
 
 ## Add or change a recipe
 
-Keep each package in `packages/<pkgname>/`, with its `PKGBUILD`, generated `.SRCINFO`, and any auxiliary files. Use `packages/chatgpt-desktop/` as a reference, adapting dependencies and extraction to the actual upstream artifact.
+Keep each package in `packages/<pkgname>/`, with its `PKGBUILD`, generated `.SRCINFO`, a `distribution` file, and any auxiliary files. Set `distribution` to `local` for direct vendor downloads on each workstation, or `repository` only after reviewing redistribution rights. Missing or unknown values fail CI. Moving an already published package to local-only requires a repository migration. Use `packages/chatgpt-desktop/` as a reference, adapting dependencies and extraction to the actual upstream artifact.
 
 Review these details before submitting:
 
@@ -86,6 +86,6 @@ If an update fails, inspect its build or install logs and fix the cause through 
 
 Describe the package change, upstream source, and validation performed. Include desktop launch results where applicable and call out root scriptlets or system configuration changes. Keep unrelated changes in separate PRs.
 
-After merge, CI rebuilds changed packages, signs them, and publishes the `repo` Release. Contributors do not need the packaging private key or App private key. Never commit either credential or upload unsigned packages manually. Clients receive published updates through `pacman -Syu`.
+After merge, CI rebuilds and tests changed recipes. Local-only binaries remain on the disposable runner and are never uploaded. Only packages classified as `repository` are signed and published to the `repo` Release. Contributors do not need the packaging private key or App private key. Never commit either credential or upload unsigned packages manually. Clients receive published binary updates through `pacman -Syu`. Local-only users update their reviewed checkout and rerun `scripts/install-local.sh`; automatic PR merging does not update installed local applications.
 
 For interrupted publication and key maintenance, see [Signing and publication](README.md#signing-and-publication). Keep `SigLevel = Required TrustedOnly` in client configuration.
