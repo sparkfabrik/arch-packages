@@ -77,8 +77,10 @@ def main():
         if not checks or any(check["state"] != "SUCCESS" for check in checks):
             print("Required checks are not all successful")
             continue
+        # --admin skips gh's client-side BLOCKED check. The installation token has
+        # only the App's review bypass; GitHub still enforces required CI.
         # Merge now, never leave auto-merge enabled for a subsequently edited head.
-        result = subprocess.run(["gh", "pr", "merge", number, "--squash", "--match-head-commit", head], text=True, capture_output=True)
+        result = subprocess.run(["gh", "pr", "merge", number, "--squash", "--admin", "--match-head-commit", head], text=True, capture_output=True)
         if result.returncode:
             # Another package may have merged after we read the branch status.
             status = run("gh", "pr", "view", number, "--json", "mergeStateStatus", "--jq", ".mergeStateStatus")
