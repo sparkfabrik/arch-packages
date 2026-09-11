@@ -115,7 +115,9 @@ The `repo` Release contains packages, detached signatures, database aliases, fil
 
 Packages upload before database aliases. The release checkpoint changes last. An interrupted run can rebuild from its last signed checkpoint and retry. Retries reuse previously signed packages only when their embedded recipe-tree identity matches the intended recipe; unsigned partial uploads are replaced with the newly checked build. GitHub cannot replace database and signature assets atomically, so a client may need to retry briefly during publication. Never weaken `SigLevel` to work around that.
 
-Changing a published recipe requires a higher `pkgver` or `pkgrel`. Existing package filenames are never overwritten with different bytes. Package removals and epoch changes require a separate repository migration. Old assets are not pruned automatically.
+Changing a published recipe requires a higher `pkgver` or `pkgrel`. Signed package filenames are never overwritten with different bytes. Package removals and epoch changes require a separate repository migration. Old assets are not pruned automatically.
+
+If a package loses its signature after reaching the live database but before its checkpoint is recorded, automatic recovery stops. Submit a reviewed `pkgrel` bump and publish the new package filename to restore repository operation.
 
 The packaging fingerprint is `CC54D2480F42AB0EE8E63DF91BE396C8C99CB4BE`. The certification key expires in 2028; the signing subkey expires in 2027. Keep the certification key and revocation certificate offline. Before expiry, create a replacement signing subkey, update the public key and provisioner copy through review, and replace `PACKAGING_KEY`. For a compromised primary key, distribute a new fingerprint through a reviewed trust migration before resuming publication.
 
