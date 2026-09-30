@@ -1,6 +1,6 @@
 # Maintainer: SparkFabrik platform team
 pkgname=chatgpt-desktop
-pkgver=26.908.70816
+pkgver=26.928.21956
 pkgrel=1
 pkgdesc='ChatGPT desktop application repackaged from the official OpenAI binary'
 arch=('x86_64')
@@ -28,7 +28,7 @@ source=('chatgpt-launcher')
 sha256sums=('a2374b2b286206fa2852a651f7cbf541406eae3c9d0463d783bc0ef36a89e76b')
 source_x86_64=("https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_${pkgver}_amd64.deb")
 noextract=("chatgpt_${pkgver}_amd64.deb")
-sha256sums_x86_64=('10ed0c1a880b9975d1f185bf7911a7f514e06b9863cd4ed9561d40063617c854')
+sha256sums_x86_64=('9ac8d0711b4601368d49deddbf50a8fe52358cb61b6d9f7a5c18b41ed4500ad8')
 
 package() {
   set -o pipefail
