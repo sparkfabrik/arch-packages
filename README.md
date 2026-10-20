@@ -18,9 +18,9 @@ Maintained by SparkFabrik. This is an independent repository, not an official Ar
 | Package           | Application                       | Source                   | Architecture | Distribution                          |
 | ----------------- | --------------------------------- | ------------------------ | ------------ | ------------------------------------- |
 | `chatgpt-desktop` | Codex/ChatGPT desktop application | OpenAI's official `.deb` | `x86_64`     | Paru recipe, direct upstream download |
-| `voice-strip` | Live microphone processing and virtual microphone | Official GitHub release | `x86_64` | Paru recipe, direct upstream download |
+| `voice-strip` | Live microphone processing and virtual microphone | Official GitHub release | `x86_64` | Signed pacman repository |
 
-The desktop application is packaged under OpenAI's upstream `chatgpt` name; this is not Codex CLI. No package is currently approved for binary publication. ARM builds and publication to the AUR are outside the current scope.
+The desktop application is packaged under OpenAI's upstream `chatgpt` name; this is not Codex CLI. `voice-strip` is published as a signed binary package; see [Signed binary repository](#signed-binary-repository). ARM builds and publication to the AUR are outside the current scope.
 
 > **NO WARRANTY OF ANY KIND. USE AT YOUR OWN RISK.** SparkFabrik and the contributors provide this repository, its packaging, and distributed artifacts **“AS IS” and “AS AVAILABLE,” without any express or implied warranty**, including merchantability, fitness for a particular purpose, or noninfringement. We do not guarantee security, compatibility, availability, continued maintenance, or suitability for production. To the extent permitted by applicable law, SparkFabrik and the contributors accept no liability for claims, damages, data loss, or other consequences arising from use. Third-party software remains subject to its own license terms.
 
@@ -46,12 +46,6 @@ paru -S --pkgbuilds sparkfabrik/chatgpt-desktop
 
 Paru fetches our Git repository, downloads the pinned official OpenAI `.deb`, verifies its checksum, and repackages it with `makepkg`. Pacman installs the resulting package and tracks its files, dependencies, and removal. The `sparkfabrik/` prefix selects our recipe explicitly. Dependencies can come from configured Arch repositories; this recipe needs no community AUR dependency.
 
-Install Voice Strip with its desktop launcher and icons:
-
-```bash
-paru -S --pkgbuilds sparkfabrik/voice-strip
-```
-
 Update system packages and our recipes together:
 
 ```bash
@@ -73,11 +67,11 @@ An existing package named `chatgpt` conflicts with this package; review paru's r
 
 The package uses a small Wayland-aware launcher and preserves OpenAI's desktop file and AppArmor profile. It does not execute Debian maintainer scripts or disable Chromium's sandbox. On AppArmor installations that restrict user namespaces, load the bundled profile through your existing AppArmor administration process. No root install scriptlet is included.
 
-## Optional binary repository
+## Signed binary repository
 
-**Do not enable this repository yet: there are currently no published binary packages.** Paru desktop installation does not require a pacman repository stanza or packaging-key import.
+It publishes `voice-strip`. Paru recipe installation does not require a pacman repository stanza or packaging-key import.
 
-The signed pacman repository hosts our own tools and binaries, and any other packages explicitly approved for distribution. This GitHub repository and its Release assets are public; confidential internal software needs private storage and authenticated access instead. Once at least one such package is published, configure it as follows.
+The signed pacman repository hosts our own tools and binaries, and any other packages explicitly approved for distribution. This GitHub repository and its Release assets are public; confidential internal software needs private storage and authenticated access instead. Configure it as follows.
 
 Download the public key and verify its primary fingerprint before trusting it:
 
@@ -104,7 +98,11 @@ SigLevel = Required TrustedOnly
 Server = https://github.com/sparkfabrik/arch-packages/releases/download/repo
 ```
 
-Packages published through this channel use normal pacman installation and updates. Use a full system upgrade when installing, rather than a partial `pacman -Sy` update.
+Packages published through this channel use normal pacman installation and updates. Use a full system upgrade when installing, rather than a partial `pacman -Sy` update:
+
+```bash
+sudo pacman -Syu voice-strip
+```
 
 ## Build and test
 
