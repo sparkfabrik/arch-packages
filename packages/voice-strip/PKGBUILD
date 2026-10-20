@@ -1,6 +1,6 @@
 # Maintainer: SparkFabrik platform team
 pkgname=voice-strip
-pkgver=0.7.1
+pkgver=0.7.2
 pkgrel=1
 pkgdesc='Live microphone through a broadcast voice chain, published as a virtual microphone'
 arch=('x86_64')
@@ -13,33 +13,13 @@ depends=(
   'vulkan-icd-loader' 'wayland'
 )
 optdepends=('vulkan-driver: GPU rendering')
-source=(
-  "https://github.com/paolomainardi/voice-strip/releases/download/v${pkgver}/voice-strip-v${pkgver}-linux-${CARCH}.tar.gz"
-  "voice-strip-${pkgver}-source.tar.gz::https://github.com/paolomainardi/voice-strip/archive/refs/tags/v${pkgver}.tar.gz"
-)
-sha256sums=('d59071bbd23f869503b7ffbceb3b80c2281d92c4ea6eb7a0f706026427bc6101'
-            '0b15a39c6c8712f238c0bc24a799ff2a165e1d618397d9ea6852fc0780cb89c1')
+source_x86_64=("https://github.com/paolomainardi/voice-strip/releases/download/v${pkgver}/voice-strip-v${pkgver}-linux-${CARCH}.tar.gz")
+sha256sums_x86_64=('ef28e55c21fb07714f8a11323abcbcea5cb3e49e123526edc8666e3e349b7525')
 
 package() {
   local binary="${srcdir}/voice-strip-v${pkgver}-linux-${CARCH}"
-  local source="${srcdir}/voice-strip-${pkgver}"
 
   install -Dm755 "${binary}/voice-strip" "${pkgdir}/usr/bin/voice-strip"
-  install -Dm644 "${source}/extras/linux/io.github.paolomainardi.voicestrip.desktop" \
-    "${pkgdir}/usr/share/applications/io.github.paolomainardi.voicestrip.desktop"
-  local size
-  for size in 16 32 48 64 128 256 512 1024; do
-    install -Dm644 "${source}/assets/icon/png/voice-strip-${size}.png" \
-      "${pkgdir}/usr/share/icons/hicolor/${size}x${size}/apps/io.github.paolomainardi.voicestrip.png"
-  done
-  install -Dm644 "${source}/assets/icon/voice-strip.svg" \
-    "${pkgdir}/usr/share/icons/hicolor/scalable/apps/io.github.paolomainardi.voicestrip.svg"
-  install -Dm644 "${binary}/LICENSE-MIT" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-MIT"
-  install -Dm644 "${binary}/LICENSE-APACHE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-APACHE"
-  install -Dm644 "${binary}/THIRD-PARTY.md" "${pkgdir}/usr/share/licenses/${pkgname}/THIRD-PARTY.md"
-  local notice
-  for notice in OFL-IBM-Plex.txt OFL-Oswald.txt; do
-    install -Dm644 "${source}/crates/app/assets/fonts/${notice}" \
-      "${pkgdir}/usr/share/licenses/${pkgname}/${notice}"
-  done
+  install -d "${pkgdir}/usr/share"
+  cp -a "${binary}/share/." "${pkgdir}/usr/share/"
 }
