@@ -18,6 +18,7 @@ Maintained by SparkFabrik. This is an independent repository, not an official Ar
 | Package           | Application                       | Source                   | Architecture | Distribution                          |
 | ----------------- | --------------------------------- | ------------------------ | ------------ | ------------------------------------- |
 | `chatgpt-desktop` | Codex/ChatGPT desktop application | OpenAI's official `.deb` | `x86_64`     | Paru recipe, direct upstream download |
+| `voice-strip` | Live microphone processing and virtual microphone | Official GitHub release | `x86_64` | Paru recipe, direct upstream download |
 
 The desktop application is packaged under OpenAI's upstream `chatgpt` name; this is not Codex CLI. No package is currently approved for binary publication. ARM builds and publication to the AUR are outside the current scope.
 
@@ -44,6 +45,12 @@ paru -S --pkgbuilds sparkfabrik/chatgpt-desktop
 ```
 
 Paru fetches our Git repository, downloads the pinned official OpenAI `.deb`, verifies its checksum, and repackages it with `makepkg`. Pacman installs the resulting package and tracks its files, dependencies, and removal. The `sparkfabrik/` prefix selects our recipe explicitly. Dependencies can come from configured Arch repositories; this recipe needs no community AUR dependency.
+
+Install Voice Strip with its desktop launcher and icons:
+
+```bash
+paru -S --pkgbuilds sparkfabrik/voice-strip
+```
 
 Update system packages and our recipes together:
 

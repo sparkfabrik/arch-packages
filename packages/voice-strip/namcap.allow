@@ -1,0 +1,17 @@
+# The upstream ELF interpreter is retained unchanged; it is not an unused
+# application library that this recipe can remove.
+voice-strip W: Unused shared library '/usr/lib64/ld-linux-x86-64.so.2' by file ('usr/bin/voice-strip')
+# A running PipeWire server is required to publish the virtual microphone;
+# ELF dependency analysis detects only the separately declared client library.
+voice-strip W: Dependency included, but may not be needed ('pipewire')
+# Winit's X11 backend loads libX11, libXcursor and libXi at runtime.
+voice-strip W: Dependency included, but may not be needed ('libx11')
+voice-strip W: Dependency included, but may not be needed ('libxcursor')
+voice-strip W: Dependency included, but may not be needed ('libxi')
+# Winit loads keyboard handling libraries for its Wayland and X11 backends.
+voice-strip W: Dependency included, but may not be needed ('libxkbcommon')
+voice-strip W: Dependency included, but may not be needed ('libxkbcommon-x11')
+# Wgpu loads libvulkan.so.1 dynamically for GPU rendering.
+voice-strip W: Dependency included, but may not be needed ('vulkan-icd-loader')
+# Winit loads the Wayland client libraries dynamically.
+voice-strip W: Dependency included, but may not be needed ('wayland')
