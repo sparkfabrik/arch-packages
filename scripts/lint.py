@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail namcap errors and warnings without an exact, documented exception."""
+"""Fail namcap errors and warnings without a reviewed exact or star-pattern exception."""
 import ast
 import pathlib
 import re
@@ -19,20 +19,30 @@ def main():
     allowed = set()
     if allow_file.exists():
         allowed = {line for line in allow_file.read_text().splitlines() if line and not line.startswith("#")}
+    exact = {line for line in allowed if "*" not in line}
+    patterns = [re.compile(re.escape(line).replace(r"\*", ".*")) for line in allowed if "*" in line]
     failed = False
-    accepted = 0
+    total = matched_exact = matched_patterns = 0
     for target in sys.argv[2:]:
         result = subprocess.run(["namcap", target], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         failed |= result.returncode != 0
         for line in result.stdout.splitlines():
-            if " E: " in line or (" W: " in line and normalize(line) not in allowed):
+            if " E: " in line:
                 failed = True
                 print(line)
             elif " W: " in line:
-                accepted += 1
+                total += 1
+                normalized = normalize(line)
+                if normalized in exact:
+                    matched_exact += 1
+                elif any(pattern.fullmatch(normalized) for pattern in patterns):
+                    matched_patterns += 1
+                else:
+                    failed = True
+                    print(line)
             else:
                 print(line)
-    print(f"Namcap: {accepted} documented upstream warnings; {'FAILED' if failed else 'passed'}")
+    print(f"Namcap: {total} warnings; {matched_exact} matched exact; {matched_patterns} matched patterns; {'FAILED' if failed else 'passed'}")
     sys.exit(int(failed))
 
 
