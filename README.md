@@ -116,7 +116,11 @@ docker run --rm --platform linux/amd64 -v "${PWD}:/work" -w /work \
 
 Local test artifacts appear in `artifacts/`; disposable build files stay in `.build/`. In CI, local-only packages are built and installed in separate disposable Arch containers on the same runner. Their binaries are never uploaded as Actions artifacts or Release assets. Only approved binary packages on `main` use temporary Actions artifacts for the publication job. PR builds never upload package binaries. The scripts under `scripts/` run inside Linux containers. `makepkg` runs as an unprivileged builder; dependency installation runs as container root.
 
-Namcap errors always fail. `packages/chatgpt-desktop/namcap.allow` lists exact upstream warnings and reasons: precompiled ELF hardening, bundled runtimes, optional integrations, and private documentation. New warnings fail until reviewed. Non-Linux macOS prebuilds are excluded to avoid namcap mistaking Mach-O files for Java classes.
+Namcap errors always fail. `packages/chatgpt-desktop/namcap.allow` records reviewed upstream warnings and reason comments for precompiled ELF hardening, bundled runtimes, optional integrations, and private documentation. Entries are exact unless they contain `*`, which matches any run of characters within the normalized warning line; all other characters are literal.
+
+Patterns may absorb only vendored path versions or changing `needed in files` lists. They must retain the warning type, package name, and specific library, module, or path stem. Each pattern needs a reviewed reason comment, and pattern changes require owner review rather than automatic merging. New warning meanings still fail until reviewed.
+
+Non-Linux macOS prebuilds are excluded to avoid namcap mistaking Mach-O files for Java classes.
 
 Run publication, tampering, retry, version-policy, and package-selection tests inside Arch:
 

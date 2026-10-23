@@ -68,7 +68,11 @@ actionlint
 
 Inspect checksum changes against the intended upstream download. Regenerating a checksum records the downloaded bytes; it does not establish their authenticity. Build artifacts appear under `artifacts/`.
 
-Namcap errors fail the build. If a vendor binary produces an unavoidable warning, add its exact text and a reason to that package's `namcap.allow`. Fix actionable findings first; do not copy another package's exceptions wholesale. New warnings require review.
+Namcap errors fail the build. If a vendor binary produces an unavoidable warning, add its exact text and a reviewed reason comment to that package's `namcap.allow`. Fix actionable findings first; do not copy another package's exceptions wholesale.
+
+An entry containing `*` is a full-line pattern: `*` matches any run of characters within the line, including an empty run. Every other character is literal, including brackets and parentheses. Patterns match after `needed in files` lists are sorted.
+
+Use patterns only for vendored path versions or `needed in files` lists that change between releases without changing the warning's meaning. Keep the warning type, package name, and specific library, module, or path stem. Every pattern needs the same reviewed reason comment as an exact entry. Pattern changes require owner review; automatic version merges cannot change `namcap.allow`.
 
 CI also installs the artifact from a signed test repository in fresh Arch. For desktop packages, launch the application in a real desktop session and report what you exercised. Do not run `scripts/test-install.sh` on a workstation: it changes the system package configuration and keyring.
 

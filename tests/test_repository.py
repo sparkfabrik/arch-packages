@@ -58,6 +58,30 @@ class AutoMergeTests(unittest.TestCase):
                     auto_merge.main()
                     self.assertEqual(command.call_count, 1)
 
+    def test_namcap_allow_change_requires_owner_review(self):
+        head = "1" * 40
+        pr = {"number": 32, "headRefOid": head, "baseRefName": "main", "isDraft": False,
+              "isCrossRepository": False,
+              "author": {"is_bot": True, "login": "app/sparkfabrik-pr-automation"}}
+
+        def command(*args):
+            if args[:3] == ("gh", "pr", "list"):
+                return json.dumps([pr])
+            if args[:2] == ("git", "fetch"):
+                return ""
+            if args[:2] == ("git", "merge-base"):
+                return "base"
+            if args[:2] == ("git", "diff"):
+                return "packages/chatgpt-desktop/PKGBUILD\npackages/chatgpt-desktop/.SRCINFO\npackages/chatgpt-desktop/namcap.allow"
+            raise AssertionError(args)
+
+        with patch.dict(os.environ, {"HEAD_SHA": head, "HEAD_BRANCH": "chore/update-chatgpt-desktop-26.1016.61520"}), \
+                patch.object(auto_merge, "run", side_effect=command), \
+                patch.object(auto_merge.Path, "read_text", return_value="chatgpt-desktop\n"), \
+                patch.object(auto_merge.subprocess, "run") as merge:
+            auto_merge.main()
+            merge.assert_not_called()
+
     def test_review_bypass_requires_successful_checks_on_the_validated_head(self):
         head = "1" * 40
         pr = {"number": 2, "headRefOid": head, "baseRefName": "main", "isDraft": False,
