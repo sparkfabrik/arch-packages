@@ -1,6 +1,6 @@
 pkgbase = chatgpt-desktop
 	pkgdesc = ChatGPT desktop application repackaged from the official OpenAI binary
-	pkgver = 26.1016.61520
+	pkgver = 26.1023.51421
 	pkgrel = 1
 	url = https://chatgpt.com/download
 	arch = x86_64
@@ -46,15 +46,15 @@ pkgbase = chatgpt-desktop
 	optdepends = gtk4: GTK 4 backend with --gtk-version=4
 	optdepends = org.freedesktop.secrets: store credentials with a Secret Service backend
 	optdepends = pipewire: WebRTC screen sharing under Wayland
-	provides = chatgpt=26.1016.61520
+	provides = chatgpt=26.1023.51421
 	conflicts = chatgpt
-	noextract = chatgpt_26.1016.61520_amd64.deb
+	noextract = chatgpt_26.1023.51421_amd64.deb
 	options = !strip
 	options = !debug
 	backup = etc/apparmor.d/chatgpt
 	source = chatgpt-launcher
 	sha256sums = a2374b2b286206fa2852a651f7cbf541406eae3c9d0463d783bc0ef36a89e76b
-	source_x86_64 = https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.1016.61520_amd64.deb
-	sha256sums_x86_64 = 9add622916c5fa3861afd95081af77e25488c108ca9c543e1f67560b390d28d4
+	source_x86_64 = https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_26.1023.51421_amd64.deb
+	sha256sums_x86_64 = 4484dc2b54fc0978beb23b8d8d717494e4e0b4fbeab0a876739105e50b44de5a
 
 pkgname = chatgpt-desktop
