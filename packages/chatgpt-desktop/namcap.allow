@@ -371,3 +371,11 @@ chatgpt-desktop W: Dependency included, but may not be needed ('xdg-utils')
 
 # Bash is required by our launcher; namcap does not resolve /bin symlinks to pacman-owned /usr/bin paths.
 chatgpt-desktop W: Dependency included, but may not be needed ('bash')
+
+# Bundled compile_latex functions imported by compile_desktop.py, checked in the fresh-install smoke test.
+chatgpt-desktop W: Referenced python module 'compile_latex.attempt_succeeded' is an uninstalled dependency (needed in files ['usr/lib/chatgpt/resources/tectonic/compiler/compile_desktop.py'])
+chatgpt-desktop W: Referenced python module 'compile_latex.expected_pdf_path' is an uninstalled dependency (needed in files ['usr/lib/chatgpt/resources/tectonic/compiler/compile_desktop.py'])
+chatgpt-desktop W: Referenced python module 'compile_latex.print_human' is an uninstalled dependency (needed in files ['usr/lib/chatgpt/resources/tectonic/compiler/compile_desktop.py'])
+chatgpt-desktop W: Referenced python module 'compile_latex.resolve_tex_root' is an uninstalled dependency (needed in files ['usr/lib/chatgpt/resources/tectonic/compiler/compile_desktop.py'])
+chatgpt-desktop W: Referenced python module 'compile_latex.skipped_attempt' is an uninstalled dependency (needed in files ['usr/lib/chatgpt/resources/tectonic/compiler/compile_desktop.py'])
+chatgpt-desktop W: Referenced python module 'compile_latex.texlive_is_usable' is an uninstalled dependency (needed in files ['usr/lib/chatgpt/resources/tectonic/compiler/compile_desktop.py'])
