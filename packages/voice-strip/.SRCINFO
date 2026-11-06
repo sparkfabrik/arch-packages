@@ -1,6 +1,6 @@
 pkgbase = voice-strip
 	pkgdesc = Live microphone through a broadcast voice chain, published as a virtual microphone
-	pkgver = 0.7.3
+	pkgver = 0.7.4
 	pkgrel = 1
 	url = https://github.com/paolomainardi/voice-strip
 	arch = x86_64
@@ -20,7 +20,7 @@ pkgbase = voice-strip
 	optdepends = vulkan-driver: GPU rendering
 	options = !strip
 	options = !debug
-	source_x86_64 = https://github.com/paolomainardi/voice-strip/releases/download/v0.7.3/voice-strip-v0.7.3-linux-x86_64.tar.gz
-	sha256sums_x86_64 = ca79d143410b58c887556251c5191dfc76156c2f5abde1efee726a6a564b5027
+	source_x86_64 = https://github.com/paolomainardi/voice-strip/releases/download/v0.7.4/voice-strip-v0.7.4-linux-x86_64.tar.gz
+	sha256sums_x86_64 = a056af2183086a7014d044f8255e0b295620a98d772d57367bcb9c5252ee5ca5
 
 pkgname = voice-strip
