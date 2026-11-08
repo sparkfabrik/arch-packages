@@ -1,6 +1,6 @@
 # Maintainer: SparkFabrik platform team
 pkgname=voice-strip
-pkgver=0.7.4
+pkgver=0.7.5
 pkgrel=1
 pkgdesc='Live microphone through a broadcast voice chain, published as a virtual microphone'
 arch=('x86_64')
@@ -14,7 +14,7 @@ depends=(
 )
 optdepends=('vulkan-driver: GPU rendering')
 source_x86_64=("https://github.com/paolomainardi/voice-strip/releases/download/v${pkgver}/voice-strip-v${pkgver}-linux-${CARCH}.tar.gz")
-sha256sums_x86_64=('a056af2183086a7014d044f8255e0b295620a98d772d57367bcb9c5252ee5ca5')
+sha256sums_x86_64=('abe01da0196009eb5824f8e8307ef6b65703a12fe7dea408495ba8a2fd1e109c')
 
 package() {
   local binary="${srcdir}/voice-strip-v${pkgver}-linux-${CARCH}"
