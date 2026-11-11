@@ -8,3 +8,8 @@ source = "github"
 github = "paolomainardi/voice-strip"
 use_latest_release = true
 prefix = "v"
+
+[herdr-core]
+source = "regex"
+url = "https://releases.herdr.dev/core/latest.json"
+regex = '\A\{\s*"version"\s*:\s*"([0-9]+\.[0-9]+\.[0-9]+)"'
