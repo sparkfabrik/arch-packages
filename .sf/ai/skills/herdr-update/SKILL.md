@@ -35,6 +35,6 @@ Apply it to the script and to everything the script downloads or runs.
 - **Privileges**: `sudo`, root checks, setuid, capabilities, polkit, `loginctl`.
 - **PATH and shell**: edits to shell rc files, profiles, the environment, or PATH.
 - **Services and autostart**: systemd units, `systemd-run`, desktop autostart, linger.
-- **Telemetry**: query parameters, counters, analytics endpoints, settings that default to on.
+- **Telemetry must stay off by default**: query parameters, counters, analytics endpoints, automatic update checks, and settings that default to on, in the script and in the program's source for the released tag. Anything found must be disabled by default for every way the program starts, while an explicit user setting still works; record how in `UPSTREAM-REVIEW.md`.
 - **Self-update**: whether the program replaces itself or another Herdr program, and what it does when pacman owns the files.
 - **Executed code**: every program the script runs, including the downloaded one and nested install scripts.

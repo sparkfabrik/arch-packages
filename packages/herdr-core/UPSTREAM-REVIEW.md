@@ -22,6 +22,7 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 
 - `hc update` refuses to replace a binary in a folder the user cannot write and tells the user to update it with the package manager (upstream `client::installed_by()`). Running `hc update` as root would bypass pacman.
 - The core starts on demand as transient systemd user units (`systemd-run --user`); no unit files are installed. When linger is off, the first service start runs `loginctl --no-ask-password enable-linger <user>` once; polkit decides whether that succeeds, otherwise hc prints a hint. Linger keeps the user manager running after logout.
+- **No telemetry and no phone-home.** Checked in the `v0.1.20` source (`de97ea5`): the binary reaches the network only through `curl` in `releases.rs`, called by an explicit `hc update` and by `hc machine add|update`; a source comment states hc never checks for updates on its own. It sends no download counter on Linux. The server reports `installed_by` to clients such as the app, so they do not offer updates for a pacman install.
 - `hc machine add` and `hc machine update` copy herdr-core to remote machines over SSH, or run an embedded installer there. These are explicit user actions.
 - State lives in `~/.local/state/herdr-core`, config in `~/.config/herdr-core`, sockets in `$XDG_RUNTIME_DIR/herdr-core`.
 
@@ -32,6 +33,7 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 - Do not reproduce the download counter, the `~/.local/bin` install, or the update swap.
 - Ship no systemd units and no `.install` scriptlet; the core manages its own transient user units.
 - `distribution` is `local`: a vendor binary we do not build, downloaded directly from upstream by each user.
+- Telemetry stays off by default. herdr-core has none today, so the recipe changes nothing. If upstream adds telemetry or automatic update checks, disable them by default for every launch path (`hc`, the core server, and cores started by herdr-app), keep an explicit user setting working, and record how here.
 - Do not add the package to `.github/auto-merge-packages`; every bump gets a human review of the script diff.
 
 ## Recheck on every update
@@ -39,5 +41,6 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 - New hosts, environment overrides, or download parameters in the script.
 - Any signature or key upstream starts publishing; the recipe should verify it.
 - New files, executables, or setuid bits in the archive.
-- Whether `hc update` still refuses a binary in `/usr/bin`, and whether the core gains services, autostart, or telemetry.
+- Whether `hc update` still refuses a binary in `/usr/bin`, and whether the core gains services or autostart.
+- Telemetry and phone-home: search the release source for network clients (`curl`, HTTP libraries, sockets to non-local hosts), analytics or telemetry settings, and automatic update checks. Any new one must be off by default.
 - The herdr-app `core_min` against the packaged version.
