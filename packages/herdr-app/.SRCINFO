@@ -1,0 +1,31 @@
+pkgbase = herdr-app
+	pkgdesc = Herdr desktop app for terminals and coding agents, repackaged from the official release
+	pkgver = 0.1.15
+	pkgrel = 1
+	url = https://herdr.dev
+	arch = x86_64
+	license = Apache-2.0
+	depends = herdr-core>=0.1.11
+	depends = curl
+	depends = glibc
+	depends = hicolor-icon-theme
+	depends = libgcc
+	depends = libglvnd
+	depends = libxcb
+	depends = libxkbcommon
+	depends = libxkbcommon-x11
+	depends = vulkan-icd-loader
+	depends = wayland
+	optdepends = git: repository status in spaces
+	optdepends = libnotify: desktop notifications
+	optdepends = openssh: other machines over SSH
+	optdepends = vulkan-driver: GPU rendering
+	optdepends = xdg-utils: open links and files
+	options = !strip
+	options = !debug
+	source = herdr-app.desktop
+	sha256sums = 2cc1199525a1bac6364a7397363f96a00db3faaf51aea049f9d4a7f694ef885a
+	source_x86_64 = https://releases.herdr.dev/app/0.1.15/herdr-app-linux-x86_64.tar.gz
+	sha256sums_x86_64 = f99e1e04be82c0e10b2f69ee7403ca34386f480d92511df5865af4703e7655dd
+
+pkgname = herdr-app

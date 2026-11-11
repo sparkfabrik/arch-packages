@@ -5,3 +5,6 @@
 
 [herdr-core]
 url = "https://releases.herdr.dev/core/install.sh"
+
+[herdr-app]
+url = "https://releases.herdr.dev/app/install.sh"

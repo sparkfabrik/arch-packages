@@ -1,0 +1,40 @@
+# Maintainer: SparkFabrik platform team
+pkgname=herdr-app
+pkgver=0.1.15
+pkgrel=1
+pkgdesc='Herdr desktop app for terminals and coding agents, repackaged from the official release'
+arch=('x86_64')
+url='https://herdr.dev'
+license=('Apache-2.0')
+options=('!strip' '!debug')
+# The app manifest's core_min is the oldest herdr-core this app accepts.
+depends=(
+  'herdr-core>=0.1.11'
+  'curl' 'glibc' 'hicolor-icon-theme' 'libgcc' 'libglvnd' 'libxcb'
+  'libxkbcommon' 'libxkbcommon-x11' 'vulkan-icd-loader' 'wayland'
+)
+optdepends=(
+  'git: repository status in spaces'
+  'libnotify: desktop notifications'
+  'openssh: other machines over SSH'
+  'vulkan-driver: GPU rendering'
+  'xdg-utils: open links and files'
+)
+source=('herdr-app.desktop')
+sha256sums=('2cc1199525a1bac6364a7397363f96a00db3faaf51aea049f9d4a7f694ef885a')
+source_x86_64=("https://releases.herdr.dev/app/${pkgver}/herdr-app-linux-${CARCH}.tar.gz")
+sha256sums_x86_64=('f99e1e04be82c0e10b2f69ee7403ca34386f480d92511df5865af4703e7655dd')
+
+package() {
+  local release="${srcdir}/herdr-app"
+
+  # The binary goes alone into /usr/bin: the app updates itself only when its
+  # icon sits next to it, so pacman stays in charge of updates.
+  install -Dm755 "${release}/herdr-app" "${pkgdir}/usr/bin/herdr-app"
+  install -Dm644 "${release}/herdr-app.svg" \
+    "${pkgdir}/usr/share/icons/hicolor/scalable/apps/herdr-app.svg"
+  install -Dm644 "${srcdir}/herdr-app.desktop" \
+    "${pkgdir}/usr/share/applications/herdr-app.desktop"
+  install -Dm644 -t "${pkgdir}/usr/share/licenses/${pkgname}" \
+    "${release}/LICENSE" "${release}/THIRD-PARTY-NOTICES"
+}
