@@ -84,6 +84,19 @@ The daily **Check upstream versions** workflow checks every entry. It can also b
 
 Adding a package to `.github/auto-merge-packages` opts it into automatic merging and requires owner review. The current guard accepts only increasing dotted numeric versions and one architecture-specific SHA256 checksum. Only App-authored PRs changing those fields and matching metadata qualify. Source URLs, dependencies, scripts, exceptions, and workflow changes still require review. Required checks must pass on the tested commit; outdated branches are updated and checked again.
 
+### Reviewed upstream install scripts
+
+Some vendors ship an install script instead of a package. Recipes reproduce only the reviewed, legitimate effects of that script; nobody runs it. `upstream-scripts.toml` maps the package to the script URL. In the package folder, `upstream-install.reviewed.sh` is the byte-exact copy that was reviewed, and `UPSTREAM-REVIEW.md` records the findings, standing decisions, and what to recheck.
+
+Compare the copies with upstream, without running anything:
+
+```bash
+python scripts/upstream_scripts.py check            # every listed package
+python scripts/upstream_scripts.py check herdr-core # exit 1 and a diff on change
+```
+
+The daily update job runs the same comparison. A changed script adds its diff to the version PR and fails the job until the change is reviewed. Review the diff with the checklist in `.sf/ai/skills/herdr-update/SKILL.md` (also reachable as an agent skill through `.claude/skills` and `.agents/skills`), adjust the recipe and `UPSTREAM-REVIEW.md`, then record the new copy in the same PR with `python scripts/upstream_scripts.py accept <package>`. Do not add such packages to `.github/auto-merge-packages`.
+
 If an update fails, inspect its build or install logs and fix the cause through a reviewed PR. Never weaken signature checks or broaden warning exceptions merely to unblock an update. A manual correction needs human review even if it started as an automated bump.
 
 ## Submit and publish

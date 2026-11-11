@@ -50,6 +50,13 @@ jobs:
       - name: Prepare version bump
         id: update
         run: python scripts/update.py "${PACKAGE}"
+      # Packages listed in upstream-scripts.toml reproduce an upstream install
+      # script. A changed script is never run; its diff goes into the version
+      # PR and fails this job until the new copy is reviewed and accepted.
+      - name: Compare the upstream install script with its reviewed copy
+        id: script
+        continue-on-error: true
+        run: python scripts/upstream_scripts.py check --allow-unlisted --markdown /tmp/script-diff.md "${PACKAGE}"
       - name: Create scoped automation token
         if: steps.update.outputs.version != ''
         id: app-token
@@ -90,6 +97,21 @@ jobs:
             git push origin "HEAD:refs/heads/${branch}"
           fi
           printf 'Updates %s to %s.\n\nAllowlisted version-only updates merge automatically after required CI passes. Other changes require platform-team review.\n' "${PACKAGE}" "${VERSION}" > /tmp/bump-body.txt
+          if [[ -s /tmp/script-diff.md ]]; then
+            printf '\n' >> /tmp/bump-body.txt
+            cat /tmp/script-diff.md >> /tmp/bump-body.txt
+          fi
           gh pr create --base main --head "${branch}" \
             --title "chore(${PACKAGE}): update to ${VERSION}" \
             --body-file /tmp/bump-body.txt
+      - name: Require review of the upstream install script
+        if: steps.script.outcome == 'failure'
+        env:
+          CHANGED: ${{ steps.script.outputs.changed }}
+        run: |
+          if [[ "${CHANGED}" == true ]]; then
+            echo "::error::The upstream install script for ${PACKAGE} changed; review it and run scripts/upstream_scripts.py accept ${PACKAGE}"
+          else
+            echo "::error::The upstream install script for ${PACKAGE} could not be compared"
+          fi
+          exit 1

@@ -10,6 +10,48 @@ import sys
 import tomllib
 import urllib.request
 
+HERDR_RELEASES = "https://releases.herdr.dev"
+
+
+def fetch(url):
+    request = urllib.request.Request(url, headers={"User-Agent": "sparkfabrik-arch-packages/1.0"})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return response.read().decode()
+
+
+def herdr_manifest_checksum(manifest, product, version):
+    def unique(pairs):
+        keys = [key for key, _ in pairs]
+        if len(keys) != len(set(keys)):
+            raise ValueError("Duplicate Herdr manifest field")
+        return dict(pairs)
+    data = json.loads(manifest, object_pairs_hook=unique)
+    if not isinstance(data, dict) or data.get("version") != version:
+        raise ValueError("Herdr manifest is for another version")
+    targets = data.get("targets")
+    entry = targets.get("linux-x86_64") if isinstance(targets, dict) else None
+    if not isinstance(entry, dict):
+        raise ValueError("Herdr manifest has no linux-x86_64 build")
+    if entry.get("url") != f"{HERDR_RELEASES}/{product}/{version}/herdr-{product}-linux-x86_64.tar.gz":
+        raise ValueError("Unexpected Herdr archive URL")
+    checksum = entry.get("sha256")
+    if not isinstance(checksum, str) or not re.fullmatch(r"[a-f0-9]{64}", checksum):
+        raise ValueError("Invalid Herdr SHA256 checksum")
+    return checksum
+
+
+def indexed_checksum(package, version, config):
+    """The archive checksum published by upstream, or None to use updpkgsums."""
+    if package == "chatgpt-desktop":
+        return openai_deb_checksum(fetch(config[package]["url"]), version)
+    # A Herdr product's nvchecker entry reads <product>/latest.json; its
+    # versioned manifest lists each archive's SHA256.
+    herdr = re.fullmatch(rf"{re.escape(HERDR_RELEASES)}/([a-z]+)/latest\.json", config[package].get("url", ""))
+    if herdr:
+        product = herdr[1]
+        return herdr_manifest_checksum(fetch(f"{HERDR_RELEASES}/{product}/{version}/manifest.json"), product, version)
+    return None
+
 
 def openai_deb_checksum(index, version):
     checksums = set()
@@ -69,18 +111,16 @@ def main():
     shutil.copytree(source, destination, dirs_exist_ok=True)
     recipe = re.sub(r"(?m)^pkgver=.+$", f"pkgver={version}", recipe)
     recipe = re.sub(r"(?m)^pkgrel=.+$", "pkgrel=1", recipe)
-    if package == "chatgpt-desktop":
-        request = urllib.request.Request(config[package]["url"], headers={"User-Agent": "sparkfabrik-arch-packages/1.0"})
-        with urllib.request.urlopen(request, timeout=30) as response:
-            checksum = openai_deb_checksum(response.read().decode(), version)
+    checksum = indexed_checksum(package, version, config)
+    if checksum is not None:
         recipe, count = re.subn(r"(?m)^sha256sums_x86_64=\('[a-f0-9]{64}'\)$",
                                 f"sha256sums_x86_64=('{checksum}')", recipe)
         if count != 1:
-            raise ValueError("Expected one pinned OpenAI checksum assignment")
+            raise ValueError("Expected one pinned upstream checksum assignment")
     (destination / "PKGBUILD").write_text(recipe)
     subprocess.run(["id", "builder"], check=True, stdout=subprocess.DEVNULL)
     subprocess.run(["chown", "-R", "builder:builder", str(destination)], check=True)
-    if package != "chatgpt-desktop":
+    if checksum is None:
         subprocess.run(["runuser", "-u", "builder", "--", "updpkgsums"], cwd=destination, check=True, stdout=sys.stderr)
     info = subprocess.check_output(["runuser", "-u", "builder", "--", "makepkg", "--printsrcinfo"], cwd=destination, text=True)
     shutil.copyfile(destination / "PKGBUILD", source / "PKGBUILD")
