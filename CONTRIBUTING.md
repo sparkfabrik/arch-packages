@@ -94,10 +94,10 @@ Compare the copies with upstream, without running anything:
 
 ```bash
 python scripts/upstream_scripts.py check            # every listed package
-python scripts/upstream_scripts.py check herdr-core # exit 1 and a diff on change
+python scripts/upstream_scripts.py check herdr-core # exit 1, a diff and its SHA256 on change
 ```
 
-The daily update job runs the same comparison. A changed script adds its diff to the version PR and fails the job until the change is reviewed. Review the diff with the checklist in `.sf/ai/skills/herdr-update/SKILL.md` (also reachable as an agent skill through `.claude/skills` and `.agents/skills`), adjust the recipe and `UPSTREAM-REVIEW.md`, then record the new copy in the same PR with `python scripts/upstream_scripts.py accept <package>`. Do not add such packages to `.github/auto-merge-packages`.
+The daily update job runs the same comparison. A changed script adds its diff to the version PR, also when the PR is already open, and fails the job until the change is reviewed. PR builds of the package run the comparison too, so a version PR cannot pass its checks while the script differs from the reviewed copy. Review the diff with the checklist in `.sf/ai/skills/herdr-update/SKILL.md` (also reachable as an agent skill through `.claude/skills` and `.agents/skills`), adjust the recipe and `UPSTREAM-REVIEW.md`, then record the new copy in the same PR with `python scripts/upstream_scripts.py accept <package> --sha256 <sha256>`, passing the SHA256 that `check` printed for the script you reviewed. The command refuses different bytes. Do not add such packages to `.github/auto-merge-packages`.
 
 If an update fails, inspect its build or install logs and fix the cause through a reviewed PR. Never weaken signature checks or broaden warning exceptions merely to unblock an update. A manual correction needs human review even if it started as an automated bump.
 
