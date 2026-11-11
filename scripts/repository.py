@@ -84,6 +84,39 @@ def distribution(name):
     return mode
 
 
+def dependency_names(srcinfo):
+    """Names in a .SRCINFO's build and runtime dependencies, without version constraints."""
+    names = set()
+    for line in srcinfo.splitlines():
+        key, separator, value = line.strip().partition(" = ")
+        if separator and re.fullmatch(r"(depends|makedepends|checkdepends)(_x86_64)?", key):
+            names.add(re.split(r"[<>=]", value, maxsplit=1)[0])
+    return names
+
+
+def recipe_dependencies(name):
+    """Direct dependencies of a recipe that are recipes here, after checking its whole tree."""
+    modes = {recipe: distribution(recipe) for recipe in recipes()}
+    if name not in modes:
+        raise ValueError(f"Unknown recipe: {name}")
+
+    def direct(recipe):
+        return sorted(dependency_names(Path(f"packages/{recipe}/.SRCINFO").read_text()) & set(modes))
+
+    def visit(recipe, chain):
+        if recipe in chain:
+            raise ValueError("Recipe dependency cycle: " + " -> ".join([*chain, recipe]))
+        for dependency in direct(recipe):
+            # Publishing a package with its in-repository dependencies needs a
+            # repository design; local recipes are never published at all.
+            if modes[recipe] == "repository":
+                raise ValueError(f"Published package {recipe} cannot depend on the recipe {dependency}")
+            visit(dependency, [*chain, recipe])
+
+    visit(name, [])
+    return direct(name)
+
+
 def plan(base, published, directory):
     modes = {name: distribution(name) for name in recipes()}
     selected = set(select(base))
@@ -274,10 +307,14 @@ def publish(directory):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=["select", "plan", "publish"])
+    parser.add_argument("command", choices=["select", "plan", "publish", "deps"])
+    parser.add_argument("package", nargs="?", help="deps: the recipe whose in-repository dependencies to list")
     parser.add_argument("--base")
     parser.add_argument("--published", action="store_true")
     args = parser.parse_args()
+    if args.command == "deps":
+        print("\n".join(recipe_dependencies(args.package or "")))
+        return
     with tempfile.TemporaryDirectory() as temporary:
         directory = Path(temporary)
         (directory / "existing").mkdir()

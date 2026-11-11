@@ -29,6 +29,8 @@ Review these details before submitting:
 - Treat `.install` scriptlets as root code: justify each operation and review upgrades and removal as well as first installation.
 - Increase `pkgver` or `pkgrel` whenever a published recipe changes. Published package filenames cannot be replaced with different bytes.
 
+A `local` recipe may depend on another recipe in this repository, with or without a version constraint. The build compiles and installs that recipe first, and the install test resolves it from the same test repository. A `repository` package cannot depend on a recipe here; publishing dependent packages needs a separate repository design.
+
 `makepkg --printsrcinfo` generates `.SRCINFO`; do not maintain it by hand. Commit both recipe and metadata together.
 
 ## Prepare metadata and build
