@@ -1,7 +1,7 @@
 pkgbase = chatgpt-desktop
 	pkgdesc = ChatGPT desktop application repackaged from the official OpenAI binary
 	pkgver = 26.1103.60933
-	pkgrel = 1
+	pkgrel = 2
 	url = https://chatgpt.com/download
 	arch = x86_64
 	license = LicenseRef-custom
@@ -25,7 +25,7 @@ pkgbase = chatgpt-desktop
 	depends = libusb
 	depends = libx11
 	depends = libxcb
-	depends = openssl
+	depends = openssl-3
 	depends = libxcomposite
 	depends = libxdamage
 	depends = libxext
