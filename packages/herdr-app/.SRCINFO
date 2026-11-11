@@ -6,6 +6,7 @@ pkgbase = herdr-app
 	arch = x86_64
 	license = Apache-2.0
 	depends = herdr-core>=0.1.11
+	depends = bash
 	depends = curl
 	depends = glibc
 	depends = hicolor-icon-theme
@@ -24,7 +25,9 @@ pkgbase = herdr-app
 	options = !strip
 	options = !debug
 	source = herdr-app.desktop
+	source = herdr-app-launcher
 	sha256sums = 2cc1199525a1bac6364a7397363f96a00db3faaf51aea049f9d4a7f694ef885a
+	sha256sums = 6b1a2c63e59f55a08bdbdc3e136c0f846b19f746bbc8a284e24de9a4d50224dc
 	source_x86_64 = https://releases.herdr.dev/app/0.1.15/herdr-app-linux-x86_64.tar.gz
 	sha256sums_x86_64 = f99e1e04be82c0e10b2f69ee7403ca34386f480d92511df5865af4703e7655dd
 
