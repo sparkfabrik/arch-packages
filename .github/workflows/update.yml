@@ -62,7 +62,7 @@ jobs:
         continue-on-error: true
         run: python scripts/upstream_scripts.py check --allow-unlisted --markdown /tmp/script-diff.md "${PACKAGE}"
       - name: Create scoped automation token
-        if: steps.update.outputs.version != ''
+        if: steps.update.outputs.version != '' || steps.script.outputs.changed == 'true'
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
         with:
@@ -76,7 +76,6 @@ jobs:
         if: steps.update.outputs.version != ''
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          RUN_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ steps.update.outputs.version }}
         shell: bash
@@ -91,18 +90,10 @@ jobs:
           existing=$(gh pr list --head "${branch}" --state all --json number --jq length)
           if [[ "${existing}" != 0 ]]; then
             echo "A pull request already exists for ${VERSION}."
-            # The script changed after the PR opened: show the diff, block the
-            # merge as a draft, and rerun its build so the required check
-            # compares the script again and fails.
+            # Show a script change that happened after the PR opened.
             open=$(gh pr list --head "${branch}" --state open --json number --jq '.[0].number // empty')
             if [[ -n "${open}" && -s /tmp/script-diff.md ]]; then
               gh pr edit "${open}" --body-file /tmp/bump-body.txt
-              gh pr ready "${open}" --undo
-              run=$(GH_TOKEN="${RUN_TOKEN}" gh run list --workflow build.yml --branch "${branch}" \
-                --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId // empty')
-              if [[ -n "${run}" ]]; then
-                GH_TOKEN="${RUN_TOKEN}" gh run rerun "${run}"
-              fi
             fi
             exit 0
           fi
@@ -122,8 +113,31 @@ jobs:
           gh pr create --base main --head "${branch}" \
             --title "chore(${PACKAGE}): update to ${VERSION}" \
             --body-file /tmp/bump-body.txt
+      # Every open version PR of the package, old versions included, may hold
+      # a green check from before the change: make it a draft so it cannot
+      # merge, and rerun its build so the required check compares again.
+      - name: Block open version pull requests until the script is reviewed
+        if: ${{ !cancelled() && steps.script.outputs.changed == 'true' && steps.app-token.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RUN_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh pr list --state open --limit 200 --json number,headRefName > /tmp/open-prs.json
+          python scripts/upstream_scripts.py version-prs "${PACKAGE}" < /tmp/open-prs.json > /tmp/version-prs.txt
+          while read -r number; do
+            gh pr ready "${number}" --undo
+            branch=$(gh pr view "${number}" --json headRefName --jq .headRefName)
+            run=$(GH_TOKEN="${RUN_TOKEN}" gh run list --workflow build.yml --branch "${branch}" \
+              --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+            if [[ -n "${run}" ]]; then
+              GH_TOKEN="${RUN_TOKEN}" gh run rerun "${run}"
+            fi
+          done < /tmp/version-prs.txt
       - name: Require review of the upstream install script
-        if: steps.script.outcome == 'failure'
+        if: ${{ !cancelled() && steps.script.outcome == 'failure' }}
         env:
           CHANGED: ${{ steps.script.outputs.changed }}
         run: |

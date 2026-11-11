@@ -101,6 +101,15 @@ class UpstreamScriptTests(unittest.TestCase):
         with patch("sys.stderr"), self.assertRaises(SystemExit):
             scripts.main(["accept", "example"])
 
+    def test_version_prs_selects_every_version_branch_of_the_package(self):
+        pulls = [{"number": 1, "headRefName": "chore/update-example-0.1.21"},
+                 {"number": 2, "headRefName": "chore/update-example-0.1.22"},
+                 {"number": 3, "headRefName": "chore/update-example-extra-1.0"},
+                 {"number": 4, "headRefName": "feat/example-0.1.23"},
+                 {"number": 5, "headRefName": "chore/update-example-"},
+                 {"number": 6, "headRefName": "chore/update-other-1.0"}]
+        self.assertEqual(scripts.version_prs("example", pulls), [1, 2])
+
     def test_config_accepts_only_plain_https_urls(self):
         for text in ['[example]\nurl = "http://example.com/a.sh"\n',
                      '[example]\nurl = "https://example.com/a.sh?x=1"\n',
