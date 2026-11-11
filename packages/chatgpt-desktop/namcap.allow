@@ -202,6 +202,7 @@ chatgpt-desktop W: Referenced python module 'detect_texlive' is an uninstalled d
 chatgpt-desktop W: Referenced python module 'detect_texlive.detect_texlive' is an uninstalled dependency (needed in files *)
 chatgpt-desktop W: Referenced python module 'extract_strip_frames.component_frame_groups' is an uninstalled dependency (needed in files *)
 chatgpt-desktop W: Referenced python module 'extract_strip_frames.component_group_image' is an uninstalled dependency (needed in files *)
+chatgpt-desktop W: Referenced python module 'extract_strip_frames.load_native_alpha_image' is an uninstalled dependency (needed in files *)
 chatgpt-desktop W: Referenced python module 'google._upb._message' is an uninstalled dependency (needed in files *)
 chatgpt-desktop W: Referenced python module 'google.protobuf.any_pb2.Any' is an uninstalled dependency (needed in files *)
 chatgpt-desktop W: Referenced python module 'google.protobuf.descriptor' is an uninstalled dependency (needed in files *)
