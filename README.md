@@ -20,6 +20,7 @@ Maintained by SparkFabrik. This is an independent repository, not an official Ar
 | `chatgpt-desktop` | Codex/ChatGPT desktop application | OpenAI's official `.deb` | `x86_64`     | Paru recipe, direct upstream download |
 | `voice-strip` | Live microphone processing and virtual microphone | Official GitHub release | `x86_64` | Signed pacman repository |
 | `herdr-core` | Herdr terminals for coding agents (`hc` CLI and core) | Official Herdr release archive | `x86_64` | Paru recipe, direct upstream download |
+| `herdr-app` | Herdr desktop app for terminals and coding agents | Official Herdr release archive | `x86_64` | Paru recipe, direct upstream download |
 
 `herdr-core` installs `/usr/bin/herdr-core` and `/usr/bin/hc` without running Herdr's install script. Update it with paru; `hc update` declines to replace a pacman-owned binary. If you used Herdr's installer before, remove `~/.local/bin/herdr-core` and its `~/.local/bin/hc` link, which would shadow the package on PATH, then run `hc server restart` when convenient: running terminals keep running.
 
