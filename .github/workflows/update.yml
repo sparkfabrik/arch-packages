@@ -34,6 +34,10 @@ jobs:
       fail-fast: false
       matrix:
         package: ${{ fromJSON(needs.discover.outputs.packages) }}
+    permissions:
+      contents: read
+      # Reruns the build of an open version PR when its install script changed.
+      actions: write
     env:
       PACKAGE: ${{ matrix.package }}
     container:
@@ -72,6 +76,7 @@ jobs:
         if: steps.update.outputs.version != ''
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RUN_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ steps.update.outputs.version }}
         shell: bash
@@ -86,10 +91,18 @@ jobs:
           existing=$(gh pr list --head "${branch}" --state all --json number --jq length)
           if [[ "${existing}" != 0 ]]; then
             echo "A pull request already exists for ${VERSION}."
-            # Show a script change that happened after the PR opened.
+            # The script changed after the PR opened: show the diff, block the
+            # merge as a draft, and rerun its build so the required check
+            # compares the script again and fails.
             open=$(gh pr list --head "${branch}" --state open --json number --jq '.[0].number // empty')
             if [[ -n "${open}" && -s /tmp/script-diff.md ]]; then
               gh pr edit "${open}" --body-file /tmp/bump-body.txt
+              gh pr ready "${open}" --undo
+              run=$(GH_TOKEN="${RUN_TOKEN}" gh run list --workflow build.yml --branch "${branch}" \
+                --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+              if [[ -n "${run}" ]]; then
+                GH_TOKEN="${RUN_TOKEN}" gh run rerun "${run}"
+              fi
             fi
             exit 0
           fi
