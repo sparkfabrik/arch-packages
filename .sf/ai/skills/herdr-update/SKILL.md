@@ -7,6 +7,10 @@ description: Update the herdr-core or herdr-app package in this repository. Use 
 
 Herdr ships Linux builds through install scripts on `https://releases.herdr.dev`. Our recipes reproduce only the reviewed effects of those scripts. The maintainer does not trust the scripts: **never execute an upstream install script**, not even in a container, and never pipe one into a shell. Download scripts and archives only into a scratch directory, and read them.
 
+## When to use this procedure
+
+A package listed in `.github/auto-merge-packages` gets version-only bumps merged automatically while its install script matches the reviewed copy; nobody runs this procedure for them. Run it for every PR that needs a human: a changed install script, a failed build, or any recipe change beyond `pkgver`, `pkgrel` and the checksum. Steps 2 to 4 then cover every release since the version recorded in `UPSTREAM-REVIEW.md`, not only the newest one.
+
 ## Inputs
 
 - `CONTRIBUTING.md`: recipe rules, the Docker build, and the reviewed install script mechanism.

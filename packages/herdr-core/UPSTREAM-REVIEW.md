@@ -34,9 +34,12 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 - Ship no systemd units and no `.install` scriptlet; the core manages its own transient user units.
 - `distribution` is `local`: a vendor binary we do not build, downloaded directly from upstream by each user.
 - Telemetry stays off by default. herdr-core has none today, so the recipe changes nothing. If upstream adds telemetry or automatic update checks, disable them by default for every launch path (`hc`, the core server, and cores started by herdr-app), keep an explicit user setting working, and record how here.
-- Do not add the package to `.github/auto-merge-packages`; every bump gets a human review of the script diff.
+- The package is listed in `.github/auto-merge-packages`. A version-only bump (new `pkgver` and manifest checksum) merges automatically when its PR build passes; that build fails while the install script differs from `upstream-install.reviewed.sh`. A changed script, a failed build, and any other recipe change need a human review with this file.
 
-## Recheck on every update
+## Recheck at every human review
+
+Automatic version merges do not run these checks. A human review covers every release since the version in Last review.
+
 
 - New hosts, environment overrides, or download parameters in the script.
 - Any signature or key upstream starts publishing; the recipe should verify it.
