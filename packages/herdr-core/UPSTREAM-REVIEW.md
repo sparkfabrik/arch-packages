@@ -46,4 +46,4 @@ Automatic version merges do not run these checks. A human review covers every re
 - New files, executables, or setuid bits in the archive.
 - Whether `hc update` still refuses a binary in `/usr/bin`, and whether the core gains services or autostart.
 - Telemetry and phone-home: search the release source for network clients (`curl`, HTTP libraries, sockets to non-local hosts), analytics or telemetry settings, and automatic update checks. Any new one must be off by default.
-- The herdr-app `core_min` against the packaged version.
+- The herdr-app `core_min` against the packaged version. The updater raises the herdr-app `herdr-core>=` floor when `core_min` rises, and that PR needs a human review.

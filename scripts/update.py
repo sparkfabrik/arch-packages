@@ -19,7 +19,8 @@ def fetch(url):
         return response.read().decode()
 
 
-def herdr_manifest_checksum(manifest, product, version):
+def herdr_manifest(manifest, product, version):
+    """The parsed release manifest, after checking its version, URL and checksum."""
     def unique(pairs):
         keys = [key for key, _ in pairs]
         if len(keys) != len(set(keys)):
@@ -37,19 +38,55 @@ def herdr_manifest_checksum(manifest, product, version):
     checksum = entry.get("sha256")
     if not isinstance(checksum, str) or not re.fullmatch(r"[a-f0-9]{64}", checksum):
         raise ValueError("Invalid Herdr SHA256 checksum")
-    return checksum
+    return data
+
+
+def herdr_manifest_checksum(manifest, product, version):
+    return herdr_manifest(manifest, product, version)["targets"]["linux-x86_64"]["sha256"]
+
+
+def herdr_product(package, config):
+    """The Herdr product whose <product>/latest.json the nvchecker entry reads, or None."""
+    herdr = re.fullmatch(rf"{re.escape(HERDR_RELEASES)}/([a-z]+)/latest\.json", config[package].get("url", ""))
+    return herdr[1] if herdr else None
+
+
+def fetch_herdr_manifest(product, version):
+    return herdr_manifest(fetch(f"{HERDR_RELEASES}/{product}/{version}/manifest.json"), product, version)
+
+
+def numeric_version(text):
+    return tuple(map(int, text.split(".")))
+
+
+def raise_core_floor(recipe, manifest):
+    """Raise the recipe's herdr-core>= floor to the app manifest's core_min; never lower it.
+
+    A raised floor changes depends, so the auto-merge guard hands the PR to a human.
+    """
+    core_min = manifest.get("core_min")
+    if not isinstance(core_min, str) or not re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", core_min):
+        raise ValueError("Herdr app manifest has no valid core_min")
+    floors = list(re.finditer(r"(?<![\w.+-])herdr-core>=([0-9]+(?:\.[0-9]+)*)(?=['\"\s)])", recipe))
+    if len(floors) != 1:
+        raise ValueError("Expected one herdr-core>= dependency in the recipe")
+    floor = floors[0]
+    required, current = numeric_version(core_min), numeric_version(floor[1])
+    width = max(len(required), len(current))
+    if required + (0,) * (width - len(required)) <= current + (0,) * (width - len(current)):
+        return recipe
+    print(f"Raising the herdr-core floor from {floor[1]} to {core_min}", file=sys.stderr)
+    return recipe[:floor.start(1)] + core_min + recipe[floor.end(1):]
 
 
 def indexed_checksum(package, version, config):
     """The archive checksum published by upstream, or None to use updpkgsums."""
     if package == "chatgpt-desktop":
         return openai_deb_checksum(fetch(config[package]["url"]), version)
-    # A Herdr product's nvchecker entry reads <product>/latest.json; its
-    # versioned manifest lists each archive's SHA256.
-    herdr = re.fullmatch(rf"{re.escape(HERDR_RELEASES)}/([a-z]+)/latest\.json", config[package].get("url", ""))
-    if herdr:
-        product = herdr[1]
-        return herdr_manifest_checksum(fetch(f"{HERDR_RELEASES}/{product}/{version}/manifest.json"), product, version)
+    # A Herdr product's versioned manifest lists each archive's SHA256.
+    product = herdr_product(package, config)
+    if product:
+        return fetch_herdr_manifest(product, version)["targets"]["linux-x86_64"]["sha256"]
     return None
 
 
@@ -111,7 +148,14 @@ def main():
     shutil.copytree(source, destination, dirs_exist_ok=True)
     recipe = re.sub(r"(?m)^pkgver=.+$", f"pkgver={version}", recipe)
     recipe = re.sub(r"(?m)^pkgrel=.+$", "pkgrel=1", recipe)
-    checksum = indexed_checksum(package, version, config)
+    product = herdr_product(package, config)
+    if product:
+        manifest = fetch_herdr_manifest(product, version)
+        checksum = manifest["targets"]["linux-x86_64"]["sha256"]
+        if product == "app":
+            recipe = raise_core_floor(recipe, manifest)
+    else:
+        checksum = indexed_checksum(package, version, config)
     if checksum is not None:
         recipe, count = re.subn(r"(?m)^sha256sums_x86_64=\('[a-f0-9]{64}'\)$",
                                 f"sha256sums_x86_64=('{checksum}')", recipe)
