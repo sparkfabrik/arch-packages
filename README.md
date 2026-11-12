@@ -123,7 +123,7 @@ Publication tests use temporary keys and simulated GitHub storage, with real GPG
 
 The daily workflow checks each package named in `nvchecker.toml`. A newer release updates `pkgver`, resets `pkgrel` to `1`, refreshes checksums with `updpkgsums`, regenerates `.SRCINFO`, and opens one PR per version. CI downloads and verifies the source before building. Existing PRs, including rejected versions, are not duplicated.
 
-SparkFabrik PR Automation opens the PR, so CI starts without manual approval. Packages listed in `.github/auto-merge-packages` merge automatically after required CI passes. `herdr-core` and `voice-strip` are enabled. For local-only packages, merging updates the reviewed recipe; paru discovers the new version when users refresh and upgrade. It does not publish or remotely install the application.
+SparkFabrik PR Automation opens the PR, so CI starts without manual approval. Packages listed in `.github/auto-merge-packages` merge automatically after required CI passes. `herdr-app`, `herdr-core` and `voice-strip` are enabled. For local-only packages, merging updates the reviewed recipe; paru discovers the new version when users refresh and upgrade. It does not publish or remotely install the application.
 
 The merge workflow runs trusted code from `main`. It accepts only App-authored PRs that change the package's version, release counter, SHA256 checksum, and corresponding `.SRCINFO`. Dependency, source-template, scriptlet, workflow, and other changes require platform-team review. The merge is bound to the tested head commit. Outdated branches are updated and tested again.
 
