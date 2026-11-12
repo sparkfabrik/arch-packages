@@ -37,9 +37,11 @@ Upstream ships the Herdr desktop app through an install script. This recipe repr
 - Do not reproduce the download counter, the `~/.local` install, the cache refreshes (pacman hooks handle them) or the D-Bus signal.
 - The launcher adds no display flags: the app chooses Wayland or X11 itself. No `.install` scriptlet.
 - `distribution` is `local`: a vendor binary we do not build, downloaded directly from upstream by each user.
-- Do not add the package to `.github/auto-merge-packages`; every bump gets a human review of the script diff.
+- The package is on `.github/auto-merge-packages`. An updater version PR merges without a human only when it changes nothing but `pkgver`, `pkgrel` and the archive checksum, the install script still matches `upstream-install.reviewed.sh`, and required CI passes. A changed script, a release that raises `core_min` (the updater then raises the `herdr-core` floor, which the merge guard rejects), or any other recipe change waits for human review.
 
-## Recheck on every update
+## Recheck on every reviewed update
+
+CI checks every version PR automatically: the install script against the reviewed copy, the archive against the SHA256 pinned from the versioned manifest, the build with namcap, and an install in fresh Arch. Nothing checks the binary's behavior automatically, and the recipe installs only the files it names, so a new file in the archive is not caught either. A plain version bump therefore merges without the checks below. A human runs this list on every version PR that stops for review and on every manual update:
 
 - New hosts, environment overrides, or download parameters in the script.
 - Any signature or key upstream starts publishing; the recipe should verify it.
