@@ -14,7 +14,24 @@ chown -R builder:builder ".build/${package}"
 cd ".build/${package}"
 runuser -u builder -- makepkg --printsrcinfo > generated.SRCINFO
 diff -u "${root}/packages/${package}/.SRCINFO" generated.SRCINFO
-mapfile -t dependencies < <(awk '$1 ~ /^(depends|makedepends|checkdepends)(_x86_64)?$/ {print $3}' generated.SRCINFO)
+# Dependencies that are recipes here are built first and installed from their
+# artifacts, which stay in artifacts/ for the install test.
+# Command substitution, not process substitution, so a refusal stops the build.
+listed=$(cd "${root}" && python scripts/repository.py deps "${package}")
+mapfile -t recipe_dependencies < <(printf '%s' "${listed}" | grep .)
+for dependency in "${recipe_dependencies[@]}"; do
+  bash "${root}/scripts/build.sh" "${dependency}"
+  built_list=$(cd "${root}/.build/${dependency}" && runuser -u builder -- makepkg --packagelist)
+  mapfile -t built <<< "${built_list}"
+  pacman -U --needed --noconfirm -- "${built[@]}"
+done
+dependencies=()
+while read -r dependency; do
+  name="${dependency%%[<>=]*}"
+  if ! printf '%s\n' "${recipe_dependencies[@]}" | grep -qxF -- "${name}"; then
+    dependencies+=("${dependency}")
+  fi
+done < <(awk '$1 ~ /^(depends|makedepends|checkdepends)(_x86_64)?$/ {print $3}' generated.SRCINFO)
 if (( ${#dependencies[@]} )); then
   pacman -S --needed --noconfirm -- "${dependencies[@]}"
 fi

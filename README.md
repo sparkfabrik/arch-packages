@@ -15,9 +15,12 @@ Maintained by SparkFabrik. This is an independent repository, not an official Ar
 
 ## Available packages
 
-| Package       | Application                                       | Source                  | Architecture | Distribution             |
-| ------------- | ------------------------------------------------- | ----------------------- | ------------ | ------------------------ |
-| `voice-strip` | Live microphone processing and virtual microphone | Official GitHub release | `x86_64`     | Signed pacman repository |
+| Package       | Application                                           | Source                         | Architecture | Distribution                          |
+| ------------- | ----------------------------------------------------- | ------------------------------ | ------------ | ------------------------------------- |
+| `voice-strip` | Live microphone processing and virtual microphone     | Official GitHub release        | `x86_64`     | Signed pacman repository              |
+| `herdr-core`  | Herdr terminals for coding agents (`hc` CLI and core) | Official Herdr release archive | `x86_64`     | Paru recipe, direct upstream download |
+
+`herdr-core` installs `/usr/bin/herdr-core` and `/usr/bin/hc` without running Herdr's install script. Update it with paru; `hc update` declines to replace a pacman-owned binary. If you used Herdr's installer before, remove `~/.local/bin/herdr-core` and its `~/.local/bin/hc` link, which would shadow the package on PATH, then run `hc server restart` when convenient: running terminals keep running.
 
 `voice-strip` is published as a signed binary package; see [Signed binary repository](#signed-binary-repository). ARM builds and publication to the AUR are outside the current scope.
 
@@ -117,7 +120,7 @@ Publication tests use temporary keys and simulated GitHub storage, with real GPG
 
 The daily workflow checks each package named in `nvchecker.toml`. A newer release updates `pkgver`, resets `pkgrel` to `1`, refreshes checksums with `updpkgsums`, regenerates `.SRCINFO`, and opens one PR per version. CI downloads and verifies the source before building. Existing PRs, including rejected versions, are not duplicated.
 
-SparkFabrik PR Automation opens the PR, so CI starts without manual approval. Packages listed in `.github/auto-merge-packages` merge automatically after required CI passes. `voice-strip` is enabled. For local-only packages, merging updates the reviewed recipe; paru discovers the new version when users refresh and upgrade. It does not publish or remotely install the application.
+SparkFabrik PR Automation opens the PR, so CI starts without manual approval. Packages listed in `.github/auto-merge-packages` merge automatically after required CI passes. `herdr-core` and `voice-strip` are enabled. For local-only packages, merging updates the reviewed recipe; paru discovers the new version when users refresh and upgrade. It does not publish or remotely install the application.
 
 The merge workflow runs trusted code from `main`. It accepts only App-authored PRs that change the package's version, release counter, SHA256 checksum, and corresponding `.SRCINFO`. Dependency, source-template, scriptlet, workflow, and other changes require platform-team review. The merge is bound to the tested head commit. Outdated branches are updated and tested again.
 

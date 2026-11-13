@@ -1,0 +1,14 @@
+pkgbase = herdr-core
+	pkgdesc = Terminals for coding agents that keep running (hc CLI and core server)
+	pkgver = 0.1.21
+	pkgrel = 1
+	url = https://herdr.dev/core/
+	arch = x86_64
+	license = Apache-2.0
+	optdepends = openssh: manage terminals on other machines with hc machine
+	options = !strip
+	options = !debug
+	source_x86_64 = herdr-core-0.1.21-x86_64.tar.gz::https://releases.herdr.dev/core/0.1.21/herdr-core-linux-x86_64.tar.gz
+	sha256sums_x86_64 = 78424755c10a40dde38a0bdb55c20ac19706e9ae05ed68fc2acf1fcff0d941c1
+
+pkgname = herdr-core

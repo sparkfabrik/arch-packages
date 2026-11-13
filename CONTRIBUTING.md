@@ -29,6 +29,8 @@ Review these details before submitting:
 - Treat `.install` scriptlets as root code: justify each operation and review upgrades and removal as well as first installation.
 - Increase `pkgver` or `pkgrel` whenever a published recipe changes. Published package filenames cannot be replaced with different bytes.
 
+A `local` recipe may depend on another recipe in this repository, with or without a version constraint. The build compiles and installs that recipe first, and the install test resolves it from the same test repository. A `repository` package cannot depend on a recipe here; publishing dependent packages needs a separate repository design.
+
 `makepkg --printsrcinfo` generates `.SRCINFO`; do not maintain it by hand. Commit both recipe and metadata together.
 
 ## Prepare metadata and build
@@ -83,6 +85,21 @@ For externally versioned packages, add an entry to `nvchecker.toml` whose name m
 The daily **Check upstream versions** workflow checks every entry. It can also be dispatched manually on `main`. It refreshes source checksums with `updpkgsums`; CI verifies the downloaded archive. It updates the version and checksums, resets `pkgrel` to `1`, regenerates metadata, and opens a PR through SparkFabrik PR Automation. An existing PR for that version, even a closed one, prevents duplicate PRs.
 
 Adding a package to `.github/auto-merge-packages` opts it into automatic merging and requires owner review. The current guard accepts only increasing dotted numeric versions and one architecture-specific SHA256 checksum. Only App-authored PRs changing those fields and matching metadata qualify. Source URLs, dependencies, scripts, exceptions, and workflow changes still require review. Required checks must pass on the tested commit; outdated branches are updated and checked again.
+
+### Reviewed upstream install scripts
+
+Some vendors ship an install script instead of a package. Recipes reproduce only the reviewed, legitimate effects of that script; nobody runs it. `upstream-scripts.toml` maps the package to the script URL. In the package folder, `upstream-install.reviewed.sh` is the byte-exact copy that was reviewed, and `UPSTREAM-REVIEW.md` records the findings, standing decisions, and what to recheck.
+
+Compare the copies with upstream, without running anything:
+
+```bash
+python scripts/upstream_scripts.py check            # every listed package
+python scripts/upstream_scripts.py check herdr-core # exit 1, a diff and its SHA256 on change
+```
+
+The daily update job runs the same comparison. A changed script adds its diff to the version PR and fails the job until the change is reviewed. The job also turns every open version PR of that package into a draft and reruns its build, so none can merge on a check from before the change. PR builds of the package run the comparison too, so a version PR cannot pass its checks while the script differs from the reviewed copy. Review the diff with the checklist in `.sf/ai/skills/herdr-update/SKILL.md` (also reachable as an agent skill through `.claude/skills` and `.agents/skills`), adjust the recipe and `UPSTREAM-REVIEW.md`, then record the new copy in the same PR with `python scripts/upstream_scripts.py accept <package> --sha256 <sha256>`, passing the SHA256 that `check` printed for the script you reviewed. The command refuses different bytes.
+
+Such a package can be listed in `.github/auto-merge-packages`. Then only a version-only bump whose install script still matches the reviewed copy merges without a human: the PR build compares the script, checks the archive against the checksum from the release manifest, lints the package, and test-installs it. A changed script, a failed build, and any other recipe change still need human review. An automatic merge skips the per-release checks in the package's `UPSTREAM-REVIEW.md`, such as archive contents and telemetry in the release source; the next human review covers every release since the last one it recorded.
 
 If an update fails, inspect its build or install logs and fix the cause through a reviewed PR. Never weaken signature checks or broaden warning exceptions merely to unblock an update. A manual correction needs human review even if it started as an automated bump.
 
