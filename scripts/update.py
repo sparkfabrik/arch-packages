@@ -81,8 +81,6 @@ def raise_core_floor(recipe, manifest):
 
 def indexed_checksum(package, version, config):
     """The archive checksum published by upstream, or None to use updpkgsums."""
-    if package == "chatgpt-desktop":
-        return openai_deb_checksum(fetch(config[package]["url"]), version)
     # A Herdr product's versioned manifest lists each archive's SHA256.
     product = herdr_product(package, config)
     if product:
@@ -90,31 +88,7 @@ def indexed_checksum(package, version, config):
     return None
 
 
-def openai_deb_checksum(index, version):
-    checksums = set()
-    for paragraph in re.split(r"\n\s*\n", index.replace("\r\n", "\n").strip()):
-        fields = {}
-        for line in paragraph.splitlines():
-            if line.startswith((" ", "\t")) or ": " not in line:
-                continue
-            key, value = line.split(": ", 1)
-            if key in fields:
-                raise ValueError("Duplicate Debian index field")
-            fields[key] = value
-        if (fields.get("Package"), fields.get("Architecture"), fields.get("Version")) != ("chatgpt", "amd64", version):
-            continue
-        if fields.get("Filename") != f"pool/main/c/chatgpt/chatgpt_{version}_amd64.deb":
-            raise ValueError("Unexpected OpenAI archive path")
-        checksum = fields.get("SHA256", "")
-        if not re.fullmatch(r"[a-f0-9]{64}", checksum):
-            raise ValueError("Invalid OpenAI SHA256 checksum")
-        checksums.add(checksum)
-    if len(checksums) != 1:
-        raise ValueError("Expected one matching OpenAI release checksum")
-    return checksums.pop()
-
-
-def upstream_version(output, package="chatgpt-desktop"):
+def upstream_version(output, package):
     records = [json.loads(line) for line in output.splitlines() if line.strip()]
     versions = {record["version"] for record in records if record.get("name") == package and "version" in record}
     if len(versions) != 1:

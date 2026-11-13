@@ -72,12 +72,12 @@ class AutoMergeTests(unittest.TestCase):
             if args[:2] == ("git", "merge-base"):
                 return "base"
             if args[:2] == ("git", "diff"):
-                return "packages/chatgpt-desktop/PKGBUILD\npackages/chatgpt-desktop/.SRCINFO\npackages/chatgpt-desktop/namcap.allow"
+                return "packages/demo/PKGBUILD\npackages/demo/.SRCINFO\npackages/demo/namcap.allow"
             raise AssertionError(args)
 
-        with patch.dict(os.environ, {"HEAD_SHA": head, "HEAD_BRANCH": "chore/update-chatgpt-desktop-26.1016.61520"}), \
+        with patch.dict(os.environ, {"HEAD_SHA": head, "HEAD_BRANCH": "chore/update-demo-26.1016.61520"}), \
                 patch.object(auto_merge, "run", side_effect=command), \
-                patch.object(auto_merge.Path, "read_text", return_value="chatgpt-desktop\n"), \
+                patch.object(auto_merge.Path, "read_text", return_value="demo\n"), \
                 patch.object(auto_merge.subprocess, "run") as merge:
             auto_merge.main()
             merge.assert_not_called()
@@ -139,16 +139,29 @@ class SelectionTests(unittest.TestCase):
             self.assertEqual(repository.select("0" * 40), ["a"])
 
     def test_deletion_fails_even_with_shared_changes(self):
-        with patch.object(repository, "recipes", return_value=["a"]), patch.object(repository, "run", return_value="packages/b/PKGBUILD\nscripts/build.sh"):
+        with patch.object(repository, "recipes", return_value=["a"]), patch.object(repository, "run", side_effect=["packages/b/PKGBUILD\nscripts/build.sh", "repository"]):
+            with self.assertRaises(ValueError):
+                repository.select("base")
+
+    def test_local_recipe_removal_does_not_select_deleted_package(self):
+        for paths, expected in [("packages/b/PKGBUILD", []),
+                                ("packages/b/PKGBUILD\nscripts/build.sh", ["a"])]:
+            with self.subTest(paths=paths), patch.object(repository, "recipes", return_value=["a"]), \
+                    patch.object(repository, "run", side_effect=[paths, "local"]):
+                self.assertEqual(repository.select("base"), expected)
+
+    def test_unknown_previous_distribution_blocks_removal(self):
+        with patch.object(repository, "recipes", return_value=["a"]), \
+                patch.object(repository, "run", side_effect=["packages/b/PKGBUILD", "unknown"]):
             with self.assertRaises(ValueError):
                 repository.select("base")
 
     def test_upstream_version_rejects_shell_text_and_ambiguity(self):
         for versions in [["$(touch /tmp/injected)"], ["26.1.1", "26.1.2"], []]:
-            data = "\n".join(json.dumps({"name": "chatgpt-desktop", "version": version}) for version in versions)
+            data = "\n".join(json.dumps({"name": "demo", "version": version}) for version in versions)
             with self.assertRaises(ValueError):
-                updater.upstream_version(data)
-        self.assertEqual(updater.upstream_version('{"name":"chatgpt-desktop","version":"26.1.1"}'), "26.1.1")
+                updater.upstream_version(data, "demo")
+        self.assertEqual(updater.upstream_version('{"name":"demo","version":"26.1.1"}', "demo"), "26.1.1")
 
     def test_warning_normalization_preserves_dependencies(self):
         first = "pkg W: Referenced library 'libx.so' is an uninstalled dependency (needed in files ['b', 'a'])"
