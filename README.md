@@ -31,9 +31,9 @@ Use the [signed binary repository](#signed-binary-repository) to install `voice-
 
 OpenAI now provides an official signed Arch Linux repository. Our `chatgpt-desktop` recipe is retired and no longer receives updates. Follow [OpenAI's Arch Linux installation instructions](https://learn.chatgpt.com/docs/linux/linux-app#install-on-arch-linux) to install `chatgpt-bin` and receive updates through pacman.
 
-An existing `chatgpt-desktop` installation remains installed until you migrate. Review the package replacement prompt during migration. Our custom `codex-desktop` alias, automatic Wayland selection, and `~/.config/codex-flags.conf` handling were part of the retired recipe; do not assume the official launcher supports them.
+An existing `chatgpt-desktop` installation remains installed until you migrate. For manual migration, review the package replacement prompt. Our custom `codex-desktop` alias, automatic Wayland selection, and `~/.config/codex-flags.conf` handling were part of the retired recipe; do not assume the official launcher supports them.
 
-System setup and migration automation belong in [archlinux-ansible-provisioner](https://github.com/sparkfabrik/archlinux-ansible-provisioner), which provides sf-toolbox.
+With the updated [sf-toolbox](https://github.com/sparkfabrik/archlinux-ansible-provisioner), existing `chatgpt-desktop`, `chatgpt`, and `openai-codex-desktop` installations migrate automatically to `chatgpt-bin` on the next run. Fresh desktop installations remain opt-in with `CHATGPT_DESKTOP=1`. System configuration belongs in that provisioner.
 
 ### Recipe-only packages
 
