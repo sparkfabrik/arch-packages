@@ -9,22 +9,22 @@ This guide is for contributors to SparkFabrik-maintained Arch Linux packages. Su
 - **Packaging fix:** keep `pkgver` unchanged and increase `pkgrel`. Explain the resulting installation or runtime change.
 - **Workflow or signing change:** request platform-team review and run the repository checks.
 
-Currently, recipes must produce one x86_64 package. Split packages, ARM builds, epoch changes, and package removals need a separate repository design or migration.
+Currently, recipes must produce one x86_64 package. Split packages, ARM builds, epoch changes, and published-package removals need a separate repository design or migration.
 
 ## Start a branch
 
-Clone the repository and branch from current `main`. Use Conventional Commits for commit subjects and PR titles, for example `feat(packages): add example desktop package` or `fix(chatgpt-desktop): correct launcher dependency`. Reference a related issue when one exists. AI-assisted commits must include an `Assisted-by` trailer identifying the agent and model.
+Clone the repository and branch from current `main`. Use Conventional Commits for commit subjects and PR titles, for example `feat(packages): add example desktop package` or `fix(voice-strip): correct runtime dependency`. Reference a related issue when one exists. AI-assisted commits must include an `Assisted-by` trailer identifying the agent and model.
 
 Do not push directly to `main`. Human-authored changes require one code-owner approval and a passing `Package checks` result. New commits dismiss stale approvals.
 
 ## Add or change a recipe
 
-Keep each package in `packages/<pkgname>/`, with its `PKGBUILD`, generated `.SRCINFO`, a `distribution` file, and any auxiliary files. Set `distribution` to `local` for paru recipes that download directly from a vendor, or `repository` for our own packages to publish as signed pacman binaries. This is a public repository: do not commit confidential internal files or credentials. Missing or unknown values fail CI. Moving an already published package to local-only requires a repository migration. Use `packages/chatgpt-desktop/` as a reference, adapting dependencies and extraction to the actual upstream artifact.
+Keep each package in `packages/<pkgname>/`, with its `PKGBUILD`, generated `.SRCINFO`, a `distribution` file, and any auxiliary files. Set `distribution` to `local` for paru recipes that download directly from a vendor, or `repository` for our own packages to publish as signed pacman binaries. This is a public repository: do not commit confidential internal files or credentials. Missing or unknown values fail CI. Moving an already published package to local-only requires a repository migration. Use `packages/voice-strip/` as a reference, adapting dependencies and extraction to the actual upstream artifact. Local-only recipes can be retired without a binary repository migration; published packages cannot.
 
 Review these details before submitting:
 
 - Download from the official upstream source over HTTPS. Pin SHA256 checksums with `updpkgsums`; do not use `SKIP` for downloaded binaries.
-- Install the upstream license and declare runtime dependencies. Document launcher changes and preserve desktop integration. The desktop wrapper selects native Wayland unless explicitly overridden; it never disables the sandbox.
+- Install the upstream license and declare runtime dependencies. Document launcher changes and preserve desktop integration. Never disable an application sandbox to bypass packaging problems.
 - Review archive contents, executable permissions, system configuration, and any bundled services. Do not execute foreign-package maintainer scripts as part of repackaging.
 - Treat `.install` scriptlets as root code: justify each operation and review upgrades and removal as well as first installation.
 - Increase `pkgver` or `pkgrel` whenever a published recipe changes. Published package filenames cannot be replaced with different bytes.
@@ -46,7 +46,7 @@ Inside that container, replace the package name as needed:
 
 ```bash
 set -euo pipefail
-package=chatgpt-desktop
+package=voice-strip
 pacman-key --init
 pacman -Syu --noconfirm --needed git namcap python pacman-contrib shellcheck actionlint
 useradd --create-home builder
@@ -80,7 +80,7 @@ CI also installs the artifact from a signed test repository in fresh Arch. For d
 
 For externally versioned packages, add an entry to `nvchecker.toml` whose name matches the package directory. Our own packages can instead receive version bumps through normal reviewed PRs. Choose an upstream source that returns exactly one current version. Recipes used by the updater need plain `pkgver=` and `pkgrel=` assignments.
 
-The daily **Check upstream versions** workflow checks every entry. It can also be dispatched manually on `main`. For `chatgpt-desktop`, it reads the checksum from OpenAI's package index; CI verifies the downloaded archive. Other packages use `updpkgsums`. It updates the version and checksums, resets `pkgrel` to `1`, regenerates metadata, and opens a PR through SparkFabrik PR Automation. An existing PR for that version, even a closed one, prevents duplicate PRs.
+The daily **Check upstream versions** workflow checks every entry. It can also be dispatched manually on `main`. It refreshes source checksums with `updpkgsums`; CI verifies the downloaded archive. It updates the version and checksums, resets `pkgrel` to `1`, regenerates metadata, and opens a PR through SparkFabrik PR Automation. An existing PR for that version, even a closed one, prevents duplicate PRs.
 
 Adding a package to `.github/auto-merge-packages` opts it into automatic merging and requires owner review. The current guard accepts only increasing dotted numeric versions and one architecture-specific SHA256 checksum. Only App-authored PRs changing those fields and matching metadata qualify. Source URLs, dependencies, scripts, exceptions, and workflow changes still require review. Required checks must pass on the tested commit; outdated branches are updated and checked again.
 
