@@ -4,10 +4,10 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 
 ## Last review
 
-- Date: 2026-11-13, herdr-core 0.1.20 (script as served when 0.1.21 was latest).
+- Date: 2026-11-13, herdr-core 0.1.21.
 - Script: `https://releases.herdr.dev/core/install.sh`, SHA256 `9d29a920d796d11b00fde9ab0958b616179d88acc25edf0fde8b574bde0227d2`, stored as `upstream-install.reviewed.sh`.
 - Change since the 2026-11-11 review: when the downloaded binary cannot run from the temp directory (for example a `noexec` `/tmp`), the script copies it to `<install dir>/herdr-core.staged`, runs `--version` there, installs or updates from that copy, and removes it on exit. No new hosts, privileges, or environment overrides; the recipe does not reproduce the `~/.local/bin` install, so it needs no change.
-- Archive: `herdr-core-linux-x86_64.tar.gz` with `herdr-core` (static-pie x86-64 ELF, mode 0755), `LICENSE` (Apache-2.0), `THIRD-PARTY-NOTICES`.
+- Archive: `herdr-core-linux-x86_64.tar.gz` (0.1.21 SHA256 `78424755c10a40dde38a0bdb55c20ac19706e9ae05ed68fc2acf1fcff0d941c1`, matching the manifest) with `herdr-core` (static-pie x86-64 ELF, mode 0755), `LICENSE` (Apache-2.0), `THIRD-PARTY-NOTICES`.
 
 ## What the script does
 
@@ -23,7 +23,8 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 
 - `hc update` refuses to replace a binary in a folder the user cannot write and tells the user to update it with the package manager (upstream `client::installed_by()`). Running `hc update` as root would bypass pacman.
 - The core starts on demand as transient systemd user units (`systemd-run --user`); no unit files are installed. When linger is off, the first service start runs `loginctl --no-ask-password enable-linger <user>` once; polkit decides whether that succeeds, otherwise hc prints a hint. Linger keeps the user manager running after logout.
-- **No telemetry and no phone-home.** Checked in the `v0.1.20` source (`de97ea5`): the binary reaches the network only through `curl` in `releases.rs`, called by an explicit `hc update` and by `hc machine add|update`; a source comment states hc never checks for updates on its own. It sends no download counter on Linux. The server reports `installed_by` to clients such as the app, so they do not offer updates for a pacman install.
+- **No telemetry and no phone-home.** Checked in the `v0.1.20` source (`de97ea5`) and in the `v0.1.21` changes (`1b0393f`): the binary reaches the network only through `curl` in `releases.rs`, called by an explicit `hc update` and by `hc machine add|update`; a source comment states hc never checks for updates on its own. It sends no download counter on Linux. The server reports `installed_by` to clients such as the app, so they do not offer updates for a pacman install.
+- Since 0.1.21, a core started from an SSH login runs the user's login shell once (`$SHELL -l`, or `-csh`/`-tcsh`) to read its environment, so it does not inherit the SSH session's variables. This is local and makes no network calls.
 - `hc machine add` and `hc machine update` copy herdr-core to remote machines over SSH, or run an embedded installer there. These are explicit user actions.
 - State lives in `~/.local/state/herdr-core`, config in `~/.config/herdr-core`, sockets in `$XDG_RUNTIME_DIR/herdr-core`.
 
