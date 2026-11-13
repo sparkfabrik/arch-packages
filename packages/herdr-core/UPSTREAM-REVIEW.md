@@ -4,8 +4,9 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 
 ## Last review
 
-- Date: 2026-11-11, herdr-core 0.1.20.
-- Script: `https://releases.herdr.dev/core/install.sh`, SHA256 `ac94d641e3ddb7cd1e8ec9b61babafe77a0a8f741a4eafea0844a00d0e14dd59`, stored as `upstream-install.reviewed.sh`. Identical to `distribution/install.sh` in the public `herdrdev/herdr-core` repository.
+- Date: 2026-11-13, herdr-core 0.1.20 (script as served when 0.1.21 was latest).
+- Script: `https://releases.herdr.dev/core/install.sh`, SHA256 `9d29a920d796d11b00fde9ab0958b616179d88acc25edf0fde8b574bde0227d2`, stored as `upstream-install.reviewed.sh`.
+- Change since the 2026-11-11 review: when the downloaded binary cannot run from the temp directory (for example a `noexec` `/tmp`), the script copies it to `<install dir>/herdr-core.staged`, runs `--version` there, installs or updates from that copy, and removes it on exit. No new hosts, privileges, or environment overrides; the recipe does not reproduce the `~/.local/bin` install, so it needs no change.
 - Archive: `herdr-core-linux-x86_64.tar.gz` with `herdr-core` (static-pie x86-64 ELF, mode 0755), `LICENSE` (Apache-2.0), `THIRD-PARTY-NOTICES`.
 
 ## What the script does
@@ -13,7 +14,7 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 - **Fetches** `https://releases.herdr.dev/core/latest.json`, or `core/<HC_VERSION>/manifest.json`, then the archive URL the manifest lists for the platform. `HERDR_RELEASES_URL` points both at another server.
 - **Verifies** the archive SHA256 against the manifest. The manifest is unsigned and served by the same host, so this proves integrity, not authenticity; upstream `docs/security.md` says the same. Linux builds have no other signature; only macOS bundles are checked with `codesign`.
 - **Counts downloads** by appending `?src=install` or `?src=update` to archive URLs on the release server.
-- **Runs** the downloaded `herdr-core --version` before installing it.
+- **Runs** the downloaded `herdr-core --version` before installing it. If that fails, it stages the binary as `herdr-core.staged` in the install folder, re-runs the check there, and deletes the staged copy on exit.
 - **Writes** `~/.local/bin/herdr-core` (or `HC_INSTALL_DIR`), and an `hc` symlink only when no `hc` is on PATH or in that folder. No root, no `sudo`, no PATH or shell-rc edits; it only prints a PATH hint.
 - **Updates** an existing install by running `herdr-core update --from <download>`, which swaps the binary and restarts the running core.
 - **Installs no** systemd unit files or autostart entries, and sends no telemetry beyond the download counter.
