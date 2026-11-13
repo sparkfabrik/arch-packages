@@ -26,8 +26,3 @@ EOF
 pacman -Syu --noconfirm "${package}"
 LC_ALL=C pacman -Qi "${package}" | tee /tmp/package-info.txt
 grep -Eq '^Validated By[[:space:]]*:.*Signature' /tmp/package-info.txt
-
-if [[ "${package}" == chatgpt-desktop ]]; then
-  runuser -u nobody -- python -I -B \
-    /usr/lib/chatgpt/resources/tectonic/compiler/compile_desktop.py --help
-fi

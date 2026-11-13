@@ -109,11 +109,13 @@ def select(base):
     paths = run("git", "diff", "--name-only", base, "HEAD").splitlines()
     changed = {path.split("/")[1] for path in paths if path.startswith("packages/")}
     removed = changed - set(names)
-    if removed:
-        raise ValueError(f"Package removal needs a separate repository migration: {sorted(removed)}")
+    for name in sorted(removed):
+        previous_mode = run("git", "show", f"{base}:packages/{name}/distribution")
+        if previous_mode != "local":
+            raise ValueError(f"Package removal needs a separate repository migration: {name}")
     if any(path.startswith(("scripts/", "tests/", "keys/")) or path == ".github/workflows/build.yml" for path in paths):
         return names
-    return sorted(changed)
+    return sorted(changed - removed)
 
 
 def metadata(name):
