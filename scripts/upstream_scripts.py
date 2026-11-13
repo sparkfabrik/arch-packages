@@ -6,6 +6,7 @@ Upstream scripts are data here: they are downloaded and compared, never run.
 import argparse
 import difflib
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -69,6 +70,14 @@ def markdown(package, url, diff):
             f"{fence}diff\n{diff}{'' if diff.endswith(chr(10)) else chr(10)}{fence}\n")
 
 
+def version_prs(package, pulls):
+    """Numbers of the updater's version PRs for package, from `gh pr list --json number,headRefName`."""
+    prefix = f"chore/update-{package}-"
+    return [pull["number"] for pull in pulls
+            if pull["headRefName"].startswith(prefix)
+            and re.fullmatch(r"[0-9]+(\.[0-9]+)*", pull["headRefName"][len(prefix):])]
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -76,19 +85,33 @@ def main(argv=None):
     check.add_argument("packages", nargs="*", help="default: every package in upstream-scripts.toml")
     check.add_argument("--allow-unlisted", action="store_true", help="skip packages without a reviewed script")
     check.add_argument("--markdown", type=Path, help="write a PR body section for changed scripts")
-    accept = commands.add_parser("accept", help="replace the reviewed copy with the current upstream script")
+    accept = commands.add_parser("accept", help="replace the reviewed copy with the upstream script you reviewed")
     accept.add_argument("package")
+    accept.add_argument("--sha256", required=True, type=str.lower,
+                        help="SHA256 of the script you reviewed, as printed by check")
+    prs = commands.add_parser("version-prs", help="print the version PR numbers for a package; reads gh pr list JSON")
+    prs.add_argument("package")
     args = parser.parse_args(argv)
 
+    if args.command == "version-prs":
+        for number in version_prs(args.package, json.load(sys.stdin)):
+            print(number)
+        return 0
     urls = entries(CONFIG.read_text())
     if args.command == "accept":
         if args.package not in urls:
             raise SystemExit(f"{args.package} has no entry in {CONFIG}")
+        if not re.fullmatch(r"[0-9a-f]{64}", args.sha256):
+            raise SystemExit("--sha256 must be 64 hexadecimal characters")
         current = fetch(urls[args.package])
+        digest = hashlib.sha256(current).hexdigest()
+        if digest != args.sha256:
+            raise SystemExit(f"{urls[args.package]} now has sha256 {digest}, not the reviewed {args.sha256}; "
+                             "nothing was written. Compare and review again.")
         path = reviewed_path(args.package)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(current)
-        print(f"{path}: sha256 {hashlib.sha256(current).hexdigest()}")
+        print(f"{path}: sha256 {digest}")
         return 0
 
     packages = args.packages or sorted(urls)
@@ -100,9 +123,11 @@ def main(argv=None):
         if package not in urls:
             print(f"{package}: no reviewed script", file=sys.stderr)
             continue
-        diff = unified_diff(package, urls[package], reviewed_path(package).read_bytes(), fetch(urls[package]))
+        current = fetch(urls[package])
+        diff = unified_diff(package, urls[package], reviewed_path(package).read_bytes(), current)
         if diff:
             print(diff, end="")
+            print(f"{package}: upstream sha256 {hashlib.sha256(current).hexdigest()}", file=sys.stderr)
             sections.append(markdown(package, urls[package], diff))
         else:
             print(f"{package}: matches the reviewed copy", file=sys.stderr)

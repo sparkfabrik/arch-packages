@@ -94,10 +94,12 @@ Compare the copies with upstream, without running anything:
 
 ```bash
 python scripts/upstream_scripts.py check            # every listed package
-python scripts/upstream_scripts.py check herdr-core # exit 1 and a diff on change
+python scripts/upstream_scripts.py check herdr-core # exit 1, a diff and its SHA256 on change
 ```
 
-The daily update job runs the same comparison. A changed script adds its diff to the version PR and fails the job until the change is reviewed. Review the diff with the checklist in `.sf/ai/skills/herdr-update/SKILL.md` (also reachable as an agent skill through `.claude/skills` and `.agents/skills`), adjust the recipe and `UPSTREAM-REVIEW.md`, then record the new copy in the same PR with `python scripts/upstream_scripts.py accept <package>`. Do not add such packages to `.github/auto-merge-packages`.
+The daily update job runs the same comparison. A changed script adds its diff to the version PR and fails the job until the change is reviewed. The job also turns every open version PR of that package into a draft and reruns its build, so none can merge on a check from before the change. PR builds of the package run the comparison too, so a version PR cannot pass its checks while the script differs from the reviewed copy. Review the diff with the checklist in `.sf/ai/skills/herdr-update/SKILL.md` (also reachable as an agent skill through `.claude/skills` and `.agents/skills`), adjust the recipe and `UPSTREAM-REVIEW.md`, then record the new copy in the same PR with `python scripts/upstream_scripts.py accept <package> --sha256 <sha256>`, passing the SHA256 that `check` printed for the script you reviewed. The command refuses different bytes.
+
+Such a package can be listed in `.github/auto-merge-packages`. Then only a version-only bump whose install script still matches the reviewed copy merges without a human: the PR build compares the script, checks the archive against the checksum from the release manifest, lints the package, and test-installs it. A changed script, a failed build, and any other recipe change still need human review. An automatic merge skips the per-release checks in the package's `UPSTREAM-REVIEW.md`, such as archive contents and telemetry in the release source; the next human review covers every release since the last one it recorded.
 
 If an update fails, inspect its build or install logs and fix the cause through a reviewed PR. Never weaken signature checks or broaden warning exceptions merely to unblock an update. A manual correction needs human review even if it started as an automated bump.
 

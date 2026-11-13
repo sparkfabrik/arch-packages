@@ -34,13 +34,16 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 - Ship no systemd units and no `.install` scriptlet; the core manages its own transient user units.
 - `distribution` is `local`: a vendor binary we do not build, downloaded directly from upstream by each user.
 - Telemetry stays off by default. herdr-core has none today, so the recipe changes nothing. If upstream adds telemetry or automatic update checks, disable them by default for every launch path (`hc`, the core server, and cores started by herdr-app), keep an explicit user setting working, and record how here.
-- Do not add the package to `.github/auto-merge-packages`; every bump gets a human review of the script diff.
+- The package is listed in `.github/auto-merge-packages`. A version-only bump (new `pkgver` and manifest checksum) merges automatically when its PR build passes; that build fails while the install script differs from `upstream-install.reviewed.sh`. A changed script, a failed build, and any other recipe change need a human review with this file.
 
-## Recheck on every update
+## Recheck at every human review
+
+Automatic version merges do not run these checks. A human review covers every release since the version in Last review.
+
 
 - New hosts, environment overrides, or download parameters in the script.
 - Any signature or key upstream starts publishing; the recipe should verify it.
 - New files, executables, or setuid bits in the archive.
 - Whether `hc update` still refuses a binary in `/usr/bin`, and whether the core gains services or autostart.
 - Telemetry and phone-home: search the release source for network clients (`curl`, HTTP libraries, sockets to non-local hosts), analytics or telemetry settings, and automatic update checks. Any new one must be off by default.
-- The herdr-app `core_min` against the packaged version.
+- The herdr-app `core_min` against the packaged version. The updater raises the herdr-app `herdr-core>=` floor when `core_min` rises, and that PR needs a human review.

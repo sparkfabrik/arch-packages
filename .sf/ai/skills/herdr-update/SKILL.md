@@ -7,6 +7,10 @@ description: Update the herdr-core or herdr-app package in this repository. Use 
 
 Herdr ships Linux builds through install scripts on `https://releases.herdr.dev`. Our recipes reproduce only the reviewed effects of those scripts. The maintainer does not trust the scripts: **never execute an upstream install script**, not even in a container, and never pipe one into a shell. Download scripts and archives only into a scratch directory, and read them.
 
+## When to use this procedure
+
+A package listed in `.github/auto-merge-packages` gets version-only bumps merged automatically while its install script matches the reviewed copy; nobody runs this procedure for them. Run it for every PR that needs a human: a changed install script, a failed build, or any recipe change beyond `pkgver`, `pkgrel` and the checksum. Steps 2 to 4 then cover every release since the version recorded in `UPSTREAM-REVIEW.md`, not only the newest one.
+
 ## Inputs
 
 - `CONTRIBUTING.md`: recipe rules, the Docker build, and the reviewed install script mechanism.
@@ -20,8 +24,8 @@ Herdr ships Linux builds through install scripts on `https://releases.herdr.dev`
 2. **Review every changed line** against the security checklist below, together with the unchanged code it depends on. When a change relies on behavior inside the binary (for example its self-update), read the matching source in the public upstream repository.
 3. **Map the result onto the recipe.** Reproduce new legitimate effects in `package()`: files, links, licenses, desktop entries, icons. Do not reproduce downloads at install time, writes to the user's home, shell-rc or PATH edits, telemetry markers, or self-update. Record anything deliberately not reproduced as a standing decision in `UPSTREAM-REVIEW.md`.
 4. **Check the artifact.** Download the archive that `https://releases.herdr.dev/<product>/<version>/manifest.json` lists for `linux-x86_64`. Compare its SHA256 with the manifest and with `sha256sums_x86_64` in the PKGBUILD, and list its contents. New files, new executables, setuid bits, or license changes need the same review as a script change. The manifest checksum proves integrity only; upstream publishes no signatures for Linux builds. If upstream starts signing, verify the signature in the recipe.
-5. **Check version coupling.** The app manifest's `core_min` is the oldest herdr-core the app accepts. The herdr-app recipe must depend on `herdr-core>=<core_min>`, and the packaged herdr-core `pkgver` must satisfy it. If it does not, update herdr-core first, then raise the dependency in the same or a following PR.
-6. **Record the review.** Update `UPSTREAM-REVIEW.md`: date, version, script SHA256, findings, decisions. Then run `python scripts/upstream_scripts.py accept <package>`, so the reviewed copy is exactly the script you read; confirm its SHA256 matches the one you recorded. If the recipe changed without a new upstream version, increase `pkgrel`.
+5. **Check version coupling.** The app manifest's `core_min` is the oldest herdr-core the app accepts. The herdr-app recipe must depend on `herdr-core>=<core_min>`, and the packaged herdr-core `pkgver` must satisfy it. When a release raises `core_min`, the updater raises that floor itself (never lowers it) and fails if the manifest has no valid `core_min`; the changed dependency keeps the PR out of automatic merging. In that PR, confirm the packaged herdr-core satisfies the new floor; if it does not, update herdr-core first.
+6. **Record the review.** Update `UPSTREAM-REVIEW.md`: date, version, script SHA256, findings, decisions. Then run `python scripts/upstream_scripts.py accept <package> --sha256 <sha256>` with the SHA256 that `check` printed for the script you read. It refuses to write anything if upstream now serves different bytes; in that case diff and review again. If the recipe changed without a new upstream version, increase `pkgrel`.
 7. **Validate** as `CONTRIBUTING.md` describes: the Docker build of `scripts/build.sh <package>`, the unit tests, shellcheck and actionlint. Never run `scripts/test-install.sh` or install the package on a workstation.
 8. **Report in the PR description**: what changed upstream, its security impact, and what the recipe does about it.
 

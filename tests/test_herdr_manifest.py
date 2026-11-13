@@ -4,7 +4,7 @@ import re
 import tomllib
 import unittest
 from unittest.mock import patch
-from test_repository import updater
+from test_repository import load, updater
 
 
 class HerdrManifestTests(unittest.TestCase):
@@ -53,6 +53,46 @@ class HerdrManifestTests(unittest.TestCase):
             with self.subTest(entry=entry), patch.object(updater, "fetch") as fetch:
                 self.assertIsNone(updater.indexed_checksum("voice-strip", "0.7.6", {"voice-strip": entry}))
             fetch.assert_not_called()
+
+    APP = """pkgname=herdr-app
+depends=('gtk3' 'herdr-core>=0.1.11' 'webkit2gtk-4.1')
+"""
+
+    def test_core_floor_is_kept_when_core_min_is_not_higher(self):
+        for core_min in ["0.1.11", "0.1.9", "0.1.11.0", "0.0.99"]:
+            with self.subTest(core_min=core_min):
+                self.assertEqual(updater.raise_core_floor(self.APP, {"core_min": core_min}), self.APP)
+
+    def test_core_floor_is_raised_to_a_higher_core_min(self):
+        with patch("sys.stderr"):
+            for core_min in ["0.1.12", "0.2", "1.0.0"]:
+                with self.subTest(core_min=core_min):
+                    self.assertEqual(updater.raise_core_floor(self.APP, {"core_min": core_min}),
+                                     self.APP.replace("herdr-core>=0.1.11", f"herdr-core>={core_min}"))
+            double_quoted = self.APP.replace("'", '"')
+            self.assertIn('"herdr-core>=0.1.20"',
+                          updater.raise_core_floor(double_quoted, {"core_min": "0.1.20"}))
+
+    def test_core_floor_needs_a_valid_core_min_and_one_floor(self):
+        for manifest in [{}, {"core_min": None}, {"core_min": 11}, {"core_min": ""}, {"core_min": "0.1.x"}]:
+            with self.subTest(manifest=manifest), self.assertRaisesRegex(ValueError, "core_min"):
+                updater.raise_core_floor(self.APP, manifest)
+        for recipe in ["depends=('herdr-core')\n", "depends=('herdr-core>=0.1' 'herdr-core>=0.2')\n",
+                       "depends=('my-herdr-core>=0.1')\n"]:
+            with self.subTest(recipe=recipe), self.assertRaisesRegex(ValueError, "herdr-core>="):
+                updater.raise_core_floor(recipe, {"core_min": "0.1.11"})
+
+    def test_raised_core_floor_is_not_an_automatic_merge(self):
+        old = "pkgver=0.1.15\npkgrel=1\n" + self.APP + "sha256sums_x86_64=('" + "a" * 64 + "')\n"
+        new = old.replace("0.1.15", "0.1.16").replace("a" * 64, "b" * 64)
+        info = "pkgbase = herdr-app\n\tpkgver = {}\n\tpkgrel = 1\n\tdepends = herdr-core>={}\n\tsha256sums_x86_64 = {}\n"
+        with patch("sys.stderr"):
+            raised = updater.raise_core_floor(new, {"core_min": "0.1.12"})
+        load("auto_merge").validate_bump(old, updater.raise_core_floor(new, {"core_min": "0.1.11"}),
+                                         info.format("0.1.15", "0.1.11", "a" * 64), info.format("0.1.16", "0.1.11", "b" * 64))
+        with self.assertRaisesRegex(ValueError, "Changes beyond pkgver"):
+            load("auto_merge").validate_bump(old, raised, info.format("0.1.15", "0.1.11", "a" * 64),
+                                             info.format("0.1.16", "0.1.12", "b" * 64))
 
     def test_nvchecker_reads_only_the_top_level_version(self):
         root = Path(__file__).resolve().parents[1]

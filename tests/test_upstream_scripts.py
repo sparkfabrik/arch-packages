@@ -1,3 +1,4 @@
+import hashlib
 import os
 from pathlib import Path
 import tempfile
@@ -72,11 +73,42 @@ class UpstreamScriptTests(unittest.TestCase):
         self.assertEqual((code, printed), (0, ""))
         fetch.assert_not_called()
 
-    def test_accept_stores_the_exact_upstream_bytes(self):
+    def test_check_prints_the_sha256_that_accept_requires(self):
+        upstream = b"#!/bin/sh\necho changed\n"
+        with patch.object(scripts, "fetch", return_value=upstream), \
+                patch("sys.stdout"), patch("sys.stderr") as stderr:
+            scripts.main(["check", "example"])
+        printed = "".join(call.args[0] for call in stderr.write.call_args_list)
+        self.assertIn(f"example: upstream sha256 {hashlib.sha256(upstream).hexdigest()}", printed)
+
+    def test_accept_stores_the_exact_reviewed_bytes(self):
         upstream = b"#!/bin/sh\r\necho new\n\xff"
+        digest = hashlib.sha256(upstream).hexdigest()
         with patch.object(scripts, "fetch", return_value=upstream), patch("sys.stdout"):
-            self.assertEqual(scripts.main(["accept", "example"]), 0)
+            self.assertEqual(scripts.main(["accept", "example", "--sha256", digest.upper()]), 0)
         self.assertEqual(Path("packages/example/upstream-install.reviewed.sh").read_bytes(), upstream)
+
+    def test_accept_refuses_bytes_that_were_not_reviewed(self):
+        reviewed = hashlib.sha256(b"#!/bin/sh\necho reviewed later\n").hexdigest()
+        path = Path("packages/example/upstream-install.reviewed.sh")
+        before = path.read_bytes()
+        for digest in [reviewed, "0" * 63, "g" * 64]:
+            with self.subTest(digest=digest), \
+                    patch.object(scripts, "fetch", return_value=b"#!/bin/sh\necho swapped\n"), \
+                    self.assertRaises(SystemExit):
+                scripts.main(["accept", "example", "--sha256", digest])
+            self.assertEqual(path.read_bytes(), before)
+        with patch("sys.stderr"), self.assertRaises(SystemExit):
+            scripts.main(["accept", "example"])
+
+    def test_version_prs_selects_every_version_branch_of_the_package(self):
+        pulls = [{"number": 1, "headRefName": "chore/update-example-0.1.21"},
+                 {"number": 2, "headRefName": "chore/update-example-0.1.22"},
+                 {"number": 3, "headRefName": "chore/update-example-extra-1.0"},
+                 {"number": 4, "headRefName": "feat/example-0.1.23"},
+                 {"number": 5, "headRefName": "chore/update-example-"},
+                 {"number": 6, "headRefName": "chore/update-other-1.0"}]
+        self.assertEqual(scripts.version_prs("example", pulls), [1, 2])
 
     def test_config_accepts_only_plain_https_urls(self):
         for text in ['[example]\nurl = "http://example.com/a.sh"\n',
