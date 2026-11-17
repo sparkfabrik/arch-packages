@@ -1,0 +1,20 @@
+# Reviewed namcap warnings. New warning meanings require review.
+
+# Upstream precompiled Rust binary. Repackaging cannot relink it; !strip preserves the vendor binary.
+herdr-app W: ELF file ('usr/lib/herdr-app/herdr-app') is unstripped.
+herdr-app W: Unused shared library '/usr/lib64/ld-linux-x86-64.so.2' by file ('usr/lib/herdr-app/herdr-app')
+
+# Runtime dependencies the binary runs or loads with dlopen, so namcap cannot see them.
+# herdr-core runs every terminal; the app would otherwise offer to pipe its install script into sh.
+herdr-app W: Dependency included, but may not be needed ('herdr-core')
+# curl fetches the herdr-core release manifest and update notes.
+herdr-app W: Dependency included, but may not be needed ('curl')
+# libEGL, libvulkan, libwayland-client/egl and libxkbcommon-x11 are loaded at startup by the GPUI renderer.
+herdr-app W: Dependency included, but may not be needed ('libglvnd')
+herdr-app W: Dependency included, but may not be needed ('libxkbcommon-x11')
+herdr-app W: Dependency included, but may not be needed ('vulkan-icd-loader')
+herdr-app W: Dependency included, but may not be needed ('wayland')
+
+# Bash runs our telemetry launcher; namcap does not resolve the /bin/bash shebang to the pacman-owned /usr/bin/bash.
+herdr-app W: Referenced library 'bash' is an uninstalled dependency (needed in files ['usr/bin/herdr-app'])
+herdr-app W: Dependency included, but may not be needed ('bash')
