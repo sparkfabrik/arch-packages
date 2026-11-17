@@ -42,17 +42,25 @@ class RecipeDependencyTests(unittest.TestCase):
         self.recipe("app", "local", "core-extra", "libcore")
         self.assertEqual(repository.recipe_dependencies("app"), [])
 
-    def test_published_package_cannot_depend_on_a_recipe(self):
-        for mode in ["local", "repository"]:
-            with self.subTest(dependency=mode):
-                self.recipe("core", mode)
-                self.recipe("app", "repository", "core=1")
-                with self.assertRaisesRegex(ValueError, "Published package app"):
-                    repository.recipe_dependencies("app")
-                for name in ["core", "app"]:
-                    for item in (Path("packages") / name).iterdir():
-                        item.unlink()
-                    (Path("packages") / name).rmdir()
+    def test_published_package_cannot_depend_on_a_local_recipe(self):
+        self.recipe("core", "local")
+        self.recipe("app", "repository", "core=1")
+        with self.assertRaisesRegex(ValueError, "Published package app cannot depend on the local recipe core"):
+            repository.recipe_dependencies("app")
+
+    def test_published_package_can_depend_on_a_published_recipe(self):
+        self.recipe("core", "repository", "glibc")
+        self.recipe("app", "repository", "core>=0.1.11")
+        self.recipe("tool", "local", "app")
+        self.assertEqual(repository.recipe_dependencies("app"), ["core"])
+        self.assertEqual(repository.recipe_dependencies("tool"), ["app"])
+
+    def test_published_dependency_tree_must_stay_published(self):
+        self.recipe("base", "local")
+        self.recipe("core", "repository", "base")
+        self.recipe("app", "repository", "core")
+        with self.assertRaisesRegex(ValueError, "Published package core cannot depend on the local recipe base"):
+            repository.recipe_dependencies("app")
 
     def test_published_dependency_deep_in_the_tree_is_refused(self):
         self.recipe("base", "local")
@@ -60,6 +68,12 @@ class RecipeDependencyTests(unittest.TestCase):
         self.recipe("app", "local", "core")
         with self.assertRaisesRegex(ValueError, "Published package core"):
             repository.recipe_dependencies("app")
+
+    def test_checked_in_recipes_have_valid_dependency_trees(self):
+        os.chdir(Path(__file__).resolve().parents[1])
+        for name in repository.recipes():
+            with self.subTest(recipe=name):
+                repository.recipe_dependencies(name)
 
     def test_cycles_and_unknown_recipes_fail(self):
         self.recipe("a", "local", "b")

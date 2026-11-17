@@ -95,11 +95,19 @@ jobs:
           docker run --rm --platform linux/amd64 -v "${GITHUB_WORKSPACE}:/work" -w /work \
             -e PACKAGE "${ARCH_IMAGE}" bash -c \
             'pacman-key --init && bash scripts/test-install.sh "${PACKAGE}"'
+      # artifacts/ also holds the in-repository dependencies built for this
+      # package. Upload only this package; each dependency has its own job.
+      - name: Name the package to publish
+        id: artifact
+        if: matrix.distribution == 'repository' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          version=$(awk '$1 == "pkgver" { v = $3 } $1 == "pkgrel" { r = $3 } END { print v "-" r }' "packages/${PACKAGE}/.SRCINFO")
+          echo "path=artifacts/${PACKAGE}-${version}-x86_64.pkg.tar.zst" >> "${GITHUB_OUTPUT}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: matrix.distribution == 'repository' && github.event_name == 'push' && github.ref == 'refs/heads/main'
         with:
           name: package-${{ matrix.name }}
-          path: artifacts/*.pkg.tar.zst
+          path: ${{ steps.artifact.outputs.path }}
           if-no-files-found: error
           retention-days: 7
 

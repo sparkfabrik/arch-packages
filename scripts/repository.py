@@ -107,10 +107,10 @@ def recipe_dependencies(name):
         if recipe in chain:
             raise ValueError("Recipe dependency cycle: " + " -> ".join([*chain, recipe]))
         for dependency in direct(recipe):
-            # Publishing a package with its in-repository dependencies needs a
-            # repository design; local recipes are never published at all.
-            if modes[recipe] == "repository":
-                raise ValueError(f"Published package {recipe} cannot depend on the recipe {dependency}")
+            # Clients resolve a published package's dependencies from the
+            # signed repository, and local recipes are never published there.
+            if modes[recipe] == "repository" and modes[dependency] != "repository":
+                raise ValueError(f"Published package {recipe} cannot depend on the local recipe {dependency}")
             visit(dependency, [*chain, recipe])
 
     visit(name, [])
