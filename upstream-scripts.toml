@@ -1,0 +1,7 @@
+# Upstream install scripts whose effects a recipe reproduces; nobody runs them.
+# packages/<package>/upstream-install.reviewed.sh is the reviewed copy, byte for
+# byte as fetched, and packages/<package>/UPSTREAM-REVIEW.md records the review.
+# scripts/upstream_scripts.py compares the copy with the current script.
+
+[herdr-core]
+url = "https://releases.herdr.dev/core/install.sh"

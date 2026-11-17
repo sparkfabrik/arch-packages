@@ -80,6 +80,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # A version PR must not merge while the upstream install script differs
+      # from the reviewed copy, even if the script changed after the PR opened.
+      - name: Compare the upstream install script with its reviewed copy
+        if: github.event_name == 'pull_request'
+        run: python3 scripts/upstream_scripts.py check --allow-unlisted "${PACKAGE}"
       - name: Build and lint in disposable Arch
         run: |
           docker run --rm --platform linux/amd64 -v "${GITHUB_WORKSPACE}:/work" -w /work \
