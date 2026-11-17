@@ -1,0 +1,8 @@
+#!/bin/bash
+# Herdr telemetry is off by default in this package. Upstream reads
+# HERDR_TELEMETRY once at startup; a value the user set is kept as is.
+if [ -z "${HERDR_TELEMETRY:-}" ]; then
+  HERDR_TELEMETRY=0
+  export HERDR_TELEMETRY
+fi
+exec /usr/lib/herdr-app/herdr-app "$@"
