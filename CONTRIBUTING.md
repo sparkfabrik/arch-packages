@@ -19,7 +19,7 @@ Do not push directly to `main`. Human-authored changes require one code-owner ap
 
 ## Add or change a recipe
 
-Keep each package in `packages/<pkgname>/`, with its `PKGBUILD`, generated `.SRCINFO`, a `distribution` file, and any auxiliary files. Set `distribution` to `local` for paru recipes that download directly from a vendor, or `repository` for our own packages to publish as signed pacman binaries. This is a public repository: do not commit confidential internal files or credentials. Missing or unknown values fail CI. Moving an already published package to local-only requires a repository migration. Use `packages/voice-strip/` as a reference, adapting dependencies and extraction to the actual upstream artifact. Local-only recipes can be retired without a binary repository migration; published packages cannot.
+Keep each package in `packages/<pkgname>/`, with its `PKGBUILD`, generated `.SRCINFO`, a `distribution` file, and any auxiliary files. Set `distribution` to `local` for paru recipes that download directly from a vendor, or `repository` for packages to publish as signed pacman binaries: our own, or third-party binaries whose redistribution the platform team has approved. This is a public repository: do not commit confidential internal files or credentials. Missing or unknown values fail CI. Moving an already published package to local-only requires a repository migration. Use `packages/voice-strip/` as a reference, adapting dependencies and extraction to the actual upstream artifact. Local-only recipes can be retired without a binary repository migration; published packages cannot.
 
 Review these details before submitting:
 
@@ -29,7 +29,7 @@ Review these details before submitting:
 - Treat `.install` scriptlets as root code: justify each operation and review upgrades and removal as well as first installation.
 - Increase `pkgver` or `pkgrel` whenever a published recipe changes. Published package filenames cannot be replaced with different bytes.
 
-A `local` recipe may depend on another recipe in this repository, with or without a version constraint. The build compiles and installs that recipe first, and the install test resolves it from the same test repository. A `repository` package cannot depend on a recipe here; publishing dependent packages needs a separate repository design.
+A `local` recipe may depend on another recipe in this repository, with or without a version constraint. The build compiles and installs that recipe first, and the install test resolves it from the same test repository. A `repository` package may depend only on other `repository` packages here, because clients resolve its dependencies from the signed repository; a `local` dependency fails CI. Publication signs every `repository` package from the same commit, so the published dependency always matches the recipe the dependent package was built and tested against.
 
 `makepkg --printsrcinfo` generates `.SRCINFO`; do not maintain it by hand. Commit both recipe and metadata together.
 
