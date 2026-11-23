@@ -2,7 +2,7 @@
 # Reproduces the reviewed effects of upstream's install script without running
 # it; see UPSTREAM-REVIEW.md before changing this recipe.
 pkgname=herdr-core
-pkgver=0.1.21
+pkgver=0.1.22
 pkgrel=1
 pkgdesc='Terminals for coding agents that keep running (hc CLI and core server)'
 arch=('x86_64')
@@ -13,7 +13,7 @@ optdepends=(
   'openssh: manage terminals on other machines with hc machine'
 )
 source_x86_64=("${pkgname}-${pkgver}-${CARCH}.tar.gz::https://releases.herdr.dev/core/${pkgver}/herdr-core-linux-${CARCH}.tar.gz")
-sha256sums_x86_64=('78424755c10a40dde38a0bdb55c20ac19706e9ae05ed68fc2acf1fcff0d941c1')
+sha256sums_x86_64=('3054ec3992ce80c5715d721caa9dcefa6056721d15dc113f4750afce763ba5df')
 
 package() {
   install -Dm755 "${srcdir}/herdr-core" "${pkgdir}/usr/bin/herdr-core"
