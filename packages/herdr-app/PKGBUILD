@@ -1,6 +1,6 @@
 # Maintainer: SparkFabrik platform team
 pkgname=herdr-app
-pkgver=0.1.16
+pkgver=0.1.17
 pkgrel=1
 pkgdesc='Herdr desktop app for terminals and coding agents, repackaged from the official release'
 arch=('x86_64')
@@ -24,7 +24,7 @@ source=('herdr-app.desktop' 'herdr-app-launcher')
 sha256sums=('2cc1199525a1bac6364a7397363f96a00db3faaf51aea049f9d4a7f694ef885a'
             '6b1a2c63e59f55a08bdbdc3e136c0f846b19f746bbc8a284e24de9a4d50224dc')
 source_x86_64=("${pkgname}-${pkgver}-${CARCH}.tar.gz::https://releases.herdr.dev/app/${pkgver}/herdr-app-linux-${CARCH}.tar.gz")
-sha256sums_x86_64=('282d2632196b238206cfe66bfb61c0faf299ca1c91843bd076521bbe36571216')
+sha256sums_x86_64=('2188f4d7d5cf041450dbdbf2e14649244b1a6274a1080bdd97fa7bc450e65ca1')
 
 package() {
   local release="${srcdir}/herdr-app"
