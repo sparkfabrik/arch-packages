@@ -15,7 +15,7 @@ concurrency:
 jobs:
   discover:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       packages: ${{ steps.list.outputs.packages }}
     steps:
@@ -28,7 +28,7 @@ jobs:
   update:
     needs: discover
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     environment: updates
     strategy:
       fail-fast: false

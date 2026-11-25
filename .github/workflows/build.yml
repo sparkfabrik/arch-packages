@@ -18,7 +18,7 @@ env:
 
 jobs:
   select:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       packages: ${{ steps.select.outputs.packages }}
       publish_packages: ${{ steps.select.outputs.publish_packages }}
@@ -50,7 +50,7 @@ jobs:
           PYTHON
 
   checks:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container:
       image: archlinux:base-devel@sha256:fa2d4ce3310ddd90a4208e5168be8ad367da5129af1245f38fd2d803bcbe3239
     steps:
@@ -68,7 +68,7 @@ jobs:
   build:
     needs: select
     if: needs.select.outputs.packages != '[]'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:
@@ -107,7 +107,7 @@ jobs:
     name: Package checks
     if: always()
     needs: [select, checks, build]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Require successful selection, tests, and builds
         env:
@@ -122,7 +122,7 @@ jobs:
   publish:
     needs: [select, required]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.select.outputs.publish_packages != '[]'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     environment: repository
     permissions:
       contents: write
