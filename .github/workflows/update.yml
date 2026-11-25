@@ -41,7 +41,7 @@ jobs:
     env:
       PACKAGE: ${{ matrix.package }}
     container:
-      image: archlinux:base-devel@sha256:fa2d4ce3310ddd90a4208e5168be8ad367da5129af1245f38fd2d803bcbe3239
+      image: archlinux:base-devel@sha256:949ecb1661609ab7e8f6854ba03efd62792e7a796313738e94b040c095c20d91
     steps:
       - name: Install update tools
         run: |
@@ -64,7 +64,7 @@ jobs:
       - name: Create scoped automation token
         if: steps.update.outputs.version != '' || steps.script.outputs.changed == 'true'
         id: app-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3
         with:
           client-id: ${{ vars.SF_PR_AUTOMATION_CLIENT_ID }}
           private-key: ${{ secrets.SF_PR_AUTOMATION_PRIVATE_KEY }}
