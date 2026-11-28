@@ -36,8 +36,8 @@ Upstream ships the Herdr desktop app through an install script. This recipe repr
 - Pin the archive by SHA256 in the PKGBUILD. The updater takes the checksum from the versioned manifest `app/<version>/manifest.json`; CI downloads and verifies the archive.
 - Do not reproduce the download counter, the `~/.local` install, the cache refreshes (pacman hooks handle them) or the D-Bus signal.
 - The launcher adds no display flags: the app chooses Wayland or X11 itself. No `.install` scriptlet.
-- `distribution` is `local`: a vendor binary we do not build, downloaded directly from upstream by each user.
-- The package is on `.github/auto-merge-packages`. An updater version PR merges without a human only when it changes nothing but `pkgver`, `pkgrel` and the archive checksum, the install script still matches `upstream-install.reviewed.sh`, and required CI passes. A changed script, a release that raises `core_min` (the updater then raises the `herdr-core` floor, which the merge guard rejects), or any other recipe change waits for human review.
+- `distribution` is `repository`: CI signs the unmodified upstream binary and publishes it to the `[sparkfabrik]` pacman repository and depends on `herdr-core`, which is published too. The platform team approved hosting it; Herdr is Apache-2.0 and the package installs its license and notices. Moving it back to local-only needs a repository migration, and every recipe change needs a higher `pkgver` or `pkgrel`.
+- The package is on `.github/auto-merge-packages`. An updater version PR merges without a human only when it changes nothing but `pkgver`, `pkgrel` and the archive checksum, the install script still matches `upstream-install.reviewed.sh`, and required CI passes. The merge publishes the new binary to every subscribed machine on its next `pacman -Syu`. A changed script, a release that raises `core_min` (the updater then raises the `herdr-core` floor, which the merge guard rejects), or any other recipe change waits for human review.
 
 ## Recheck on every reviewed update
 

@@ -34,14 +34,13 @@ Upstream ships herdr-core (`hc`) through an install script. This recipe reproduc
 - Pin the archive by SHA256 in the PKGBUILD. The updater takes the checksum from the versioned manifest `core/<version>/manifest.json`; CI downloads and verifies the archive.
 - Do not reproduce the download counter, the `~/.local/bin` install, or the update swap.
 - Ship no systemd units and no `.install` scriptlet; the core manages its own transient user units.
-- `distribution` is `local`: a vendor binary we do not build, downloaded directly from upstream by each user.
+- `distribution` is `repository`: CI signs the unmodified upstream binary and publishes it to the `[sparkfabrik]` pacman repository. The platform team approved hosting it; Herdr is Apache-2.0 and the package installs its license and notices. Moving it back to local-only needs a repository migration, and every recipe change needs a higher `pkgver` or `pkgrel`.
 - Telemetry stays off by default. herdr-core has none today, so the recipe changes nothing. If upstream adds telemetry or automatic update checks, disable them by default for every launch path (`hc`, the core server, and cores started by herdr-app), keep an explicit user setting working, and record how here.
-- The package is listed in `.github/auto-merge-packages`. A version-only bump (new `pkgver` and manifest checksum) merges automatically when its PR build passes; that build fails while the install script differs from `upstream-install.reviewed.sh`. A changed script, a failed build, and any other recipe change need a human review with this file.
+- The package is listed in `.github/auto-merge-packages`. A version-only bump (new `pkgver` and manifest checksum) merges automatically when its PR build passes, and the merge publishes the new binary to every subscribed machine on its next `pacman -Syu`; that build fails while the install script differs from `upstream-install.reviewed.sh`. A changed script, a failed build, and any other recipe change need a human review with this file.
 
 ## Recheck at every human review
 
 Automatic version merges do not run these checks. A human review covers every release since the version in Last review.
-
 
 - New hosts, environment overrides, or download parameters in the script.
 - Any signature or key upstream starts publishing; the recipe should verify it.
