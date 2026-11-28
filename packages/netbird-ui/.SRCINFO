@@ -1,0 +1,24 @@
+pkgbase = netbird-ui
+	pkgdesc = NetBird desktop app with system tray
+	pkgver = 0.84.0
+	pkgrel = 1
+	url = https://netbird.io
+	arch = x86_64
+	license = BSD-3-Clause
+	depends = cairo
+	depends = glib2
+	depends = glibc
+	depends = gtk4
+	depends = libsoup3
+	depends = libx11
+	depends = webkitgtk-6.0
+	depends = xdg-utils
+	optdepends = netbird: the NetBird daemon this app controls
+	options = !strip
+	options = !debug
+	source = LICENSE::https://raw.githubusercontent.com/netbirdio/netbird/v0.84.0/LICENSE
+	sha256sums = 8343fe949e32a30e2261c4f0967365271d08c4644e879dec5b998d1af666fdb3
+	source_x86_64 = https://github.com/netbirdio/netbird/releases/download/v0.84.0/netbird-ui_0.84.0_linux_amd64.deb
+	sha256sums_x86_64 = 0cae6d0d0d69ef8e676838153ac5ed3dc305247e3bc68a9e35fe783216a8a4db
+
+pkgname = netbird-ui

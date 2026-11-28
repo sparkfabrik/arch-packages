@@ -15,17 +15,21 @@ Maintained by SparkFabrik. This is an independent repository, not an official Ar
 
 ## Available packages
 
-| Package       | Application                                           | Source                         | Architecture | Distribution                          |
-| ------------- | ----------------------------------------------------- | ------------------------------ | ------------ | ------------------------------------- |
-| `voice-strip` | Live microphone processing and virtual microphone     | Official GitHub release        | `x86_64`     | Signed pacman repository              |
-| `herdr-core`  | Herdr terminals for coding agents (`hc` CLI and core) | Official Herdr release archive | `x86_64`     | Paru recipe, direct upstream download |
-| `herdr-app`   | Herdr desktop app for terminals and coding agents     | Official Herdr release archive | `x86_64`     | Paru recipe, direct upstream download |
+| Package       | Application                                               | Source                         | Architecture | Distribution                          |
+| ------------- | --------------------------------------------------------- | ------------------------------ | ------------ | ------------------------------------- |
+| `voice-strip` | Live microphone processing and virtual microphone         | Official GitHub release        | `x86_64`     | Signed pacman repository              |
+| `herdr-core`  | Herdr terminals for coding agents (`hc` CLI and core)     | Official Herdr release archive | `x86_64`     | Paru recipe, direct upstream download |
+| `herdr-app`   | Herdr desktop app for terminals and coding agents         | Official Herdr release archive | `x86_64`     | Paru recipe, direct upstream download |
+| `netbird`     | NetBird WireGuard overlay network client (CLI and daemon) | Official GitHub release        | `x86_64`     | Signed pacman repository              |
+| `netbird-ui`  | NetBird desktop app with system tray                      | Official GitHub release        | `x86_64`     | Signed pacman repository              |
 
 `herdr-core` installs `/usr/bin/herdr-core` and `/usr/bin/hc` without running Herdr's install script. Update it with paru; `hc update` declines to replace a pacman-owned binary. If you used Herdr's installer before, remove `~/.local/bin/herdr-core` and its `~/.local/bin/hc` link, which would shadow the package on PATH, then run `hc server restart` when convenient: running terminals keep running.
 
 `herdr-app` depends on the `herdr-core` recipe and leaves app and core updates to paru. **Its launcher turns Herdr's usage telemetry off** unless you set `HERDR_TELEMETRY` yourself; start it with `HERDR_TELEMETRY=1` to let the app's own setting decide. If you used Herdr's app installer before, remove `~/.local/share/herdr-app`, `~/.local/bin/herdr-app` and `~/.local/share/applications/herdr-app.desktop`: that desktop entry has the same name and would keep launching the old, self-updating copy.
 
-`voice-strip` is published as a signed binary package; see [Signed binary repository](#signed-binary-repository). ARM builds and publication to the AUR are outside the current scope.
+`netbird` installs the daemon as `netbird.service` on the default socket that the CLI and `netbird-ui` use. Start it with `sudo systemctl enable --now netbird`, then run `netbird up` or sign in from the tray. `netbird-ui` recommends `netbird` but does not depend on it, because a published package cannot depend on another recipe here.
+
+`netbird`, `netbird-ui` and `voice-strip` are published as signed binary packages; see [Signed binary repository](#signed-binary-repository). ARM builds and publication to the AUR are outside the current scope.
 
 > **NO WARRANTY OF ANY KIND. USE AT YOUR OWN RISK.** SparkFabrik and the contributors provide this repository, its packaging, and distributed artifacts **“AS IS” and “AS AVAILABLE,” without any express or implied warranty**, including merchantability, fitness for a particular purpose, or noninfringement. We do not guarantee security, compatibility, availability, continued maintenance, or suitability for production. To the extent permitted by applicable law, SparkFabrik and the contributors accept no liability for claims, damages, data loss, or other consequences arising from use. Third-party software remains subject to its own license terms.
 
@@ -123,7 +127,7 @@ Publication tests use temporary keys and simulated GitHub storage, with real GPG
 
 The daily workflow checks each package named in `nvchecker.toml`. A newer release updates `pkgver`, resets `pkgrel` to `1`, refreshes checksums with `updpkgsums`, regenerates `.SRCINFO`, and opens one PR per version. CI downloads and verifies the source before building. Existing PRs, including rejected versions, are not duplicated.
 
-SparkFabrik PR Automation opens the PR, so CI starts without manual approval. Packages listed in `.github/auto-merge-packages` merge automatically after required CI passes. `herdr-app`, `herdr-core` and `voice-strip` are enabled. For local-only packages, merging updates the reviewed recipe; paru discovers the new version when users refresh and upgrade. It does not publish or remotely install the application.
+SparkFabrik PR Automation opens the PR, so CI starts without manual approval. Packages listed in `.github/auto-merge-packages` merge automatically after required CI passes. `herdr-app`, `herdr-core`, `netbird`, `netbird-ui` and `voice-strip` are enabled. For local-only packages, merging updates the reviewed recipe; paru discovers the new version when users refresh and upgrade. It does not publish or remotely install the application.
 
 The merge workflow runs trusted code from `main`. It accepts only App-authored PRs that change the package's version, release counter, SHA256 checksum, and corresponding `.SRCINFO`. Dependency, source-template, scriptlet, workflow, and other changes require platform-team review. The merge is bound to the tested head commit. Outdated branches are updated and tested again.
 

@@ -1,0 +1,16 @@
+pkgbase = netbird
+	pkgdesc = WireGuard-based overlay network client (CLI and daemon)
+	pkgver = 0.84.0
+	pkgrel = 1
+	url = https://netbird.io
+	arch = x86_64
+	license = BSD-3-Clause
+	optdepends = resolvconf: private DNS on systems without systemd-resolved
+	options = !strip
+	options = !debug
+	source = netbird.service
+	sha256sums = 89699978978bc463f03c477c7082d49c1bef5bca85939024e1c7d4415d718f36
+	source_x86_64 = https://github.com/netbirdio/netbird/releases/download/v0.84.0/netbird_0.84.0_linux_amd64.tar.gz
+	sha256sums_x86_64 = 2d570cd4edba9231bb2d71133d6d8128c19073d189ec319631ca43429b9e614e
+
+pkgname = netbird
