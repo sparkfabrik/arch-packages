@@ -1,0 +1,31 @@
+# Maintainer: SparkFabrik platform team
+pkgname=netbird
+pkgver=0.84.0
+pkgrel=1
+pkgdesc='WireGuard-based overlay network client (CLI and daemon)'
+arch=('x86_64')
+url='https://netbird.io'
+license=('BSD-3-Clause')
+options=('!strip' '!debug')
+optdepends=('resolvconf: private DNS on systems without systemd-resolved')
+source=('netbird.service')
+source_x86_64=("https://github.com/netbirdio/netbird/releases/download/v${pkgver}/netbird_${pkgver}_linux_amd64.tar.gz")
+sha256sums=('5a941c0269e9feed4d2dfd2682b12ef72fdc866059183a95c4719ecc25aa4459')
+sha256sums_x86_64=('2d570cd4edba9231bb2d71133d6d8128c19073d189ec319631ca43429b9e614e')
+
+build() {
+  local shell
+  for shell in bash fish zsh; do
+    "${srcdir}/netbird" completion "${shell}" > "${srcdir}/completion.${shell}"
+  done
+}
+
+package() {
+  install -Dm755 "${srcdir}/netbird" "${pkgdir}/usr/bin/netbird"
+  install -Dm644 "${srcdir}/netbird.service" "${pkgdir}/usr/lib/systemd/system/netbird.service"
+  install -Dm644 "${srcdir}/completion.bash" "${pkgdir}/usr/share/bash-completion/completions/netbird"
+  install -Dm644 "${srcdir}/completion.fish" "${pkgdir}/usr/share/fish/vendor_completions.d/netbird.fish"
+  install -Dm644 "${srcdir}/completion.zsh" "${pkgdir}/usr/share/zsh/site-functions/_netbird"
+  install -Dm644 "${srcdir}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 "${srcdir}/LICENSES/BSD-3-Clause.txt" "${pkgdir}/usr/share/licenses/${pkgname}/BSD-3-Clause.txt"
+}

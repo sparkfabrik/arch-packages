@@ -1,0 +1,32 @@
+# Maintainer: SparkFabrik platform team
+# Repackages the official .deb, the only upstream artifact that carries the
+# launcher entry, icon and polkit policy; its maintainer script is not run.
+pkgname=netbird-ui
+pkgver=0.84.0
+pkgrel=1
+pkgdesc='NetBird desktop app with system tray'
+arch=('x86_64')
+url='https://netbird.io'
+license=('BSD-3-Clause')
+options=('!strip' '!debug')
+depends=('cairo' 'glib2' 'glibc' 'gtk4' 'libsoup3' 'libx11' 'webkitgtk-6.0' 'xdg-utils')
+optdepends=('netbird: the NetBird daemon this app controls')
+source=("LICENSE::https://raw.githubusercontent.com/netbirdio/netbird/v${pkgver}/LICENSE")
+source_x86_64=("https://github.com/netbirdio/netbird/releases/download/v${pkgver}/netbird-ui_${pkgver}_linux_amd64.deb")
+sha256sums=('8343fe949e32a30e2261c4f0967365271d08c4644e879dec5b998d1af666fdb3')
+sha256sums_x86_64=('0cae6d0d0d69ef8e676838153ac5ed3dc305247e3bc68a9e35fe783216a8a4db')
+
+prepare() {
+  mkdir -p "${srcdir}/deb"
+  bsdtar -xf "${srcdir}/data.tar.gz" -C "${srcdir}/deb"
+}
+
+package() {
+  local root="${srcdir}/deb/usr"
+
+  install -Dm755 "${root}/bin/netbird-ui" "${pkgdir}/usr/bin/netbird-ui"
+  install -Dm644 "${root}/share/applications/org.wails.netbird.desktop" "${pkgdir}/usr/share/applications/org.wails.netbird.desktop"
+  install -Dm644 "${root}/share/pixmaps/netbird.png" "${pkgdir}/usr/share/pixmaps/netbird.png"
+  install -Dm644 "${root}/share/polkit-1/actions/io.netbird.settings.policy" "${pkgdir}/usr/share/polkit-1/actions/io.netbird.settings.policy"
+  install -Dm644 "${srcdir}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

@@ -13,3 +13,15 @@ regex = '\A\{\s*"version"\s*:\s*"([0-9]+\.[0-9]+\.[0-9]+)"'
 source = "regex"
 url = "https://releases.herdr.dev/app/latest.json"
 regex = '\A\{\s*"version"\s*:\s*"([0-9]+\.[0-9]+\.[0-9]+)"'
+
+[netbird]
+source = "github"
+github = "netbirdio/netbird"
+use_latest_release = true
+prefix = "v"
+
+[netbird-ui]
+source = "github"
+github = "netbirdio/netbird"
+use_latest_release = true
+prefix = "v"

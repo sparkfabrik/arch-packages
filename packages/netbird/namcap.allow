@@ -1,0 +1,4 @@
+# Upstream ships a statically linked Go binary built without PIE or full RELRO;
+# the recipe repackages it unchanged and cannot relink it.
+netbird W: ELF file ('usr/bin/netbird') lacks FULL RELRO, check LDFLAGS.
+netbird W: ELF file ('usr/bin/netbird') lacks PIE.

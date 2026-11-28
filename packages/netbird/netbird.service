@@ -1,0 +1,44 @@
+# Upstream's release_files/systemd/netbird@.service as a single instance on the
+# daemon's default socket, profile and log paths, which the netbird CLI and
+# netbird-ui use without extra flags.
+[Unit]
+Description=NetBird client
+Documentation=https://docs.netbird.io
+After=network-online.target NetworkManager.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/default/netbird
+ExecStart=/usr/bin/netbird service run $FLAGS
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+CacheDirectory=netbird
+ConfigurationDirectory=netbird
+LogsDirectory=netbird
+RuntimeDirectory=netbird
+StateDirectory=netbird
+
+# sandboxing
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+NoNewPrivileges=yes
+PrivateMounts=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+# needed to load the wireguard module for kernel-mode WireGuard
+ProtectKernelModules=no
+ProtectKernelTunables=no
+ProtectSystem=yes
+RemoveIPC=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+# Upstream ships a prebuilt Go binary built without PIE or full RELRO; the
+# recipe repackages it unchanged and cannot relink it.
+netbird-ui W: ELF file ('usr/bin/netbird-ui') lacks FULL RELRO, check LDFLAGS.
+netbird-ui W: ELF file ('usr/bin/netbird-ui') lacks PIE.
+# The app runs xdg-open to send the SSO login to the browser; upstream's .deb
+# declares the same dependency.
+netbird-ui W: Dependency included, but may not be needed ('xdg-utils')
