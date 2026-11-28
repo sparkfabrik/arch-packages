@@ -10,7 +10,7 @@ options=('!strip' '!debug')
 optdepends=('resolvconf: private DNS on systems without systemd-resolved')
 source=('netbird.service')
 source_x86_64=("https://github.com/netbirdio/netbird/releases/download/v${pkgver}/netbird_${pkgver}_linux_amd64.tar.gz")
-sha256sums=('5a941c0269e9feed4d2dfd2682b12ef72fdc866059183a95c4719ecc25aa4459')
+sha256sums=('89699978978bc463f03c477c7082d49c1bef5bca85939024e1c7d4415d718f36')
 sha256sums_x86_64=('2d570cd4edba9231bb2d71133d6d8128c19073d189ec319631ca43429b9e614e')
 
 build() {

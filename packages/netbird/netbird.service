@@ -9,6 +9,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+Environment=FLAGS=
 EnvironmentFile=-/etc/default/netbird
 ExecStart=/usr/bin/netbird service run $FLAGS
 Restart=on-failure
